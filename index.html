@@ -187,92 +187,57 @@ td:first-child { text-align: left; padding-left: 8px; }
     });
 
     // PDF Export
-    async function downloadPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const date = document.getElementById("date").value || "(No Date)";
+    function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
 
-      doc.setFontSize(16);
-      doc.text("Daily Stock Update", 14, 20);
-      doc.setFontSize(12);
-      doc.text("Date: " + date, 14, 28);
+  doc.setFontSize(16);
+  doc.text("Daily Inventory Report", 14, 20);
 
-      let startY = 40;
+  let y = 30;
 
-      Object.keys(categories).forEach(cat => {
-        doc.setFontSize(13);
-        doc.text(cat, 14, startY);
-        startY += 6;
+  // Loop through table rows
+  document.querySelectorAll("table tr").forEach((row) => {
+    let rowData = [];
+    row.querySelectorAll("td input, td textarea, td select").forEach((input) => {
+      if (input) {
+        rowData.push(input.value || "");  // prevent null crash
+      }
+    });
 
-        categories[cat].forEach(item => {
-          let opening = "", closing = "";
-
-          if (["Sloppy Joe", "Black Pepper", "White Pepper"].includes(item) ||
-              ["Sauces & Spices", "Cheese", "Sayur"].includes(cat)) {
-            opening = document.getElementById(`open-${item}`).value || "-";
-            closing = document.getElementById(`close-${item}`).value || "-";
-          } 
-          else if (item === "Smash Burger") {
-            opening = (document.getElementById(`openPcs-${item}`).value || "-") + " pcs";
-            closing = (document.getElementById(`closePcs-${item}`).value || "-") + " pcs";
-          }
-          else if (item === "Egg") {
-            const openCtn = document.getElementById(`openCtn-${item}`).value || "-";
-            const openPcs = document.getElementById(`openPcs-${item}`).value || "-";
-            const closeCtn = document.getElementById(`closeCtn-${item}`).value || "-";
-            const closePcs = document.getElementById(`closePcs-${item}`).value || "-";
-            opening = openCtn + " ctn / " + openPcs + " pcs";
-            closing = closeCtn + " ctn / " + closePcs + " pcs";
-          }
-          else if (item === "Tomato Puree") {
-            const openCans = document.getElementById(`openCans-${item}`).value || "-";
-            const closeCans = document.getElementById(`closeCans-${item}`).value || "-";
-            opening = openCans + " cans";
-            closing = closeCans + " cans";
-          }
-          else {
-            const openPkt = document.getElementById(`openPkt-${item}`).value || "-";
-            const openPcs = document.getElementById(`openPcs-${item}`).value || "-";
-            const closePkt = document.getElementById(`closePkt-${item}`).value || "-";
-            const closePcs = document.getElementById(`closePcs-${item}`).value || "-";
-            opening = openPkt + " pkt / " + openPcs + " pcs";
-            closing = closePkt + " pkt / " + closePcs + " pcs";
-          }
-
-          const beli = document.getElementById(`beli-${item}`).checked ? "Beli" : "";
-          const bawak = document.getElementById(`bawak-${item}`).checked ? "Bawak" : "";
-          const status = [beli, bawak].filter(Boolean).join(", ") || "-";
-
-          doc.setFontSize(11);
-          doc.text(item, 14, startY);
-          doc.text(opening, 70, startY);
-          doc.text(closing, 120, startY);
-          doc.text(status, 170, startY);
-
-          startY += 6;
-          if (startY > 270) { doc.addPage(); startY = 20; }
-        });
-
-        startY += 6;
-      });
-
-      // Notes
-      doc.setFontSize(13);
-      doc.text("Notes:", 14, startY);
-      startY += 6;
-      ["note1", "note2", "note3"].forEach(id => {
-        const val = document.getElementById(id).value || "";
-        doc.text("• " + val, 20, startY);
-        startY += 6;
-      });
-
-      // Sales
-      startY += 6;
-      const sales = document.getElementById("dailySales").value || "-";
-      doc.text("Daily Sales: RM " + sales, 14, startY);
-
-      doc.save("daily_stock_" + date + ".pdf");
+    if (rowData.length > 0) {
+      doc.setFontSize(10);
+      doc.text(rowData.join(" | "), 14, y);
+      y += 7;
     }
+  });
+
+  // Notes section
+  let notes = [];
+  document.querySelectorAll(".notes input").forEach((note) => {
+    if (note) notes.push(note.value || "");
+  });
+  if (notes.length > 0) {
+    y += 10;
+    doc.setFontSize(12);
+    doc.text("Notes:", 14, y);
+    y += 6;
+    notes.forEach((n) => {
+      doc.text("- " + n, 20, y);
+      y += 6;
+    });
+  }
+
+  // Daily Sales
+  const dailySales = document.getElementById("dailySales");
+  if (dailySales) {
+    y += 10;
+    doc.text("Daily Sales: " + dailySales.value, 14, y);
+  }
+
+  doc.save("Daily Stock.pdf");
+}
+
 
     // Clear all
     function clearAll() {
@@ -322,3 +287,4 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+

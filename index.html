@@ -218,7 +218,7 @@
   mainContent.style.width = "1000px";
   mainContent.style.maxWidth = "1000px";
   mainContent.style.fontSize = "12px";     // shrink slightly
-  mainContent.style.lineHeight = "1.2";    // tighten spacing
+  mainContent.style.lineHeight = "1.2";    // tighter spacing
 
   const canvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
 
@@ -240,19 +240,28 @@
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // Fit perfectly into A4 height (after header)
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+  // 📏 Define margins
+  const marginLeft = 15;   // left padding
+  const marginRight = 15;  // right padding
+  const marginTop = 12;    // below header
+  const marginBottom = 12; // bottom padding
+  const usableWidth = pageWidth - marginLeft - marginRight;
+  const usableHeight = pageHeight - marginTop - marginBottom;
 
-  const scaleFactor = (pageHeight - 15) / imgHeight; // reserve space for header
+  // Fit content into usable area
+  const imgWidth = usableWidth;
+  const imgHeight = (canvas.height * usableWidth) / canvas.width;
+
+  const scaleFactor = usableHeight / imgHeight;
   const finalHeight = imgHeight * scaleFactor;
 
   // Add date header
   pdf.setFontSize(12);
-  pdf.text(`Date: ${selectedDate}`, 10, 8);
+  pdf.text(`Date: ${selectedDate}`, marginLeft, 8);
 
-  // Draw resized image below the header
-  pdf.addImage(imgData, "PNG", 0, 12, pageWidth, finalHeight);
+  // Draw resized image centered within margins
+  pdf.addImage(imgData, "PNG", marginLeft, marginTop, usableWidth, finalHeight);
+
   pdf.save(filename);
 }
 
@@ -306,6 +315,7 @@
 
 </body>
 </html>
+
 
 
 

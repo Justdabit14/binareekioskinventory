@@ -194,10 +194,13 @@ td:first-child { text-align: left; padding-left: 8px; }
 async function downloadPDF() {
   const { jsPDF } = window.jspdf;
 
-  const today = new Date().toISOString().split("T")[0];
-  const filename = `Stock-${today}.pdf`;
+  // Get date from input field for filename
+  let selectedDate = document.getElementById("dateInput").value;
+  if (!selectedDate) {
+    selectedDate = new Date().toISOString().split("T")[0];
+  }
+  const filename = `Stock-${selectedDate}.pdf`;
 
-  const mainContent = document.getElementById("mainContent");
 
   // Backup checkboxes
   const checkboxes = [];
@@ -288,6 +291,7 @@ async function downloadPDF() {
 
 </body>
 </html>
+
 
 
 

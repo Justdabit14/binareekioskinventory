@@ -188,86 +188,89 @@ td:first-child { text-align: left; padding-left: 8px; }
     });
 
     // PDF Export
-    function downloadPDF() {
+  function downloadPDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = new jsPDF("p", "mm", "a4"); // A4 portrait
 
-  // Get date for header + filename
-  const dateInput = document.getElementById("reportDate");
-  let fileDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split("T")[0];
-
-  // Title
-  doc.setFontSize(16);
-  doc.text("Daily Inventory Report", 14, 15);
+  // Title with selected date
+  let date = document.getElementById("dateInput").value || new Date().toLocaleDateString();
   doc.setFontSize(12);
-  doc.text("Date: " + fileDate, 14, 25);
+  doc.text(`Inventory Report - ${date}`, 14, 15);
 
-  // Extract table data
+  // 1. Collect headers (with Category)
   let headers = [];
-  let rows = [];
-
-  document.querySelectorAll("table thead tr th").forEach((th) => {
+  document.querySelectorAll("table thead th").forEach((th) => {
     headers.push(th.textContent.trim());
   });
 
-document.querySelectorAll("table tbody tr").forEach((tr) => {
-  let row = [];
-  tr.querySelectorAll("td").forEach((td) => {
-    let input = td.querySelector("input, textarea, select");
-    if (input) {
-      if (input.type === "checkbox") {
-        row.push(input.checked ? "✓" : ""); // Show tick mark if checked
-      } else {
-        row.push(input.value || "");
-      }
-    } else {
-      row.push(td.textContent.trim());
-    }
-  });
-  if (row.length > 0) rows.push(row);
-});
+  // 2. Collect table rows (with category info)
+  let rows = [];
+  document.querySelectorAll("tbody tr").forEach((tr) => {
+    let row = [];
+    let categoryRow = tr.closest("tbody").previousElementSibling; // h2 above tbody
+    let category = categoryRow ? categoryRow.textContent.trim() : "";
 
-  // Build table
+    tr.querySelectorAll("td").forEach((td, index) => {
+      let input = td.querySelector("input, textarea, select");
+      if (index === 0) {
+        // First column (Item name) → prepend category
+        row.push(`${category} - ${td.textContent.trim()}`);
+      } else if (input) {
+        if (input.type === "checkbox") {
+          row.push(input.checked ? "✓" : "");
+        } else {
+          row.push(input.value || "");
+        }
+      } else {
+        row.push(td.textContent.trim());
+      }
+    });
+    if (row.length > 0) rows.push(row);
+  });
+
+  // 3. Render the stock table, smaller & narrower
   doc.autoTable({
     head: [headers],
     body: rows,
-    startY: 35,
+    startY: 22,
     theme: "grid",
-    styles: { fontSize: 9, cellPadding: 2 },
-    headStyles: { fillColor: [200, 200, 200] }
+    styles: { fontSize: 8, cellPadding: 2 }, // smaller font
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 50 }, // Item + Category column
+      1: { cellWidth: 20 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 20 },
+      5: { cellWidth: 20 }
+    },
+    margin: { left: 10, right: 10 } // narrower margins
   });
 
-  let finalY = doc.lastAutoTable.finalY + 10;
+  // 4. Notes section (below table)
+  let finalY = doc.lastAutoTable.finalY + 6;
+  doc.setFontSize(10);
+  doc.text("Notes:", 14, finalY);
 
-  // Notes section
-  let notes = [];
-  document.querySelectorAll(".notes input").forEach((note) => {
-    if (note.value) notes.push(note.value);
+  let notes = document.querySelectorAll(".notes input");
+  let yPos = finalY + 5;
+  notes.forEach((note, i) => {
+    if (note.value.trim() !== "") {
+      doc.text(`• ${note.value}`, 20, yPos);
+      yPos += 5;
+    }
   });
 
-  if (notes.length > 0) {
-    doc.setFontSize(12);
-    doc.text("Notes:", 14, finalY);
-    finalY += 6;
-    notes.forEach((n) => {
-      doc.setFontSize(10);
-      doc.text("- " + n, 20, finalY);
-      finalY += 5;
-    });
+  // 5. Daily Sales
+  let salesInput = document.getElementById("dailySales");
+  if (salesInput && salesInput.value.trim() !== "") {
+    yPos += 5;
+    doc.text(`Daily Sales: RM ${salesInput.value}`, 14, yPos);
   }
 
-  // Daily Sales
-  const dailySales = document.getElementById("dailySales");
-  if (dailySales && dailySales.value) {
-    finalY += 8;
-    doc.setFontSize(12);
-    doc.text("Daily Sales: " + dailySales.value, 14, finalY);
-  }
-
-  // Save PDF
-  doc.save(`inventory-report-${fileDate}.pdf`);
+  // 6. Save file with date
+  doc.save(`inventory-${date}.pdf`);
 }
-
 
 
 
@@ -319,6 +322,7 @@ document.querySelectorAll("table tbody tr").forEach((tr) => {
 
 </body>
 </html>
+
 
 
 

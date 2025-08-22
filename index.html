@@ -70,7 +70,8 @@ td:first-child { text-align: left; padding-left: 8px; }
   <button onclick="saveData()">💾 Save</button>
 
   <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
   <script>
     // Categories + items
     const categories = {
@@ -191,65 +192,78 @@ td:first-child { text-align: left; padding-left: 8px; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
+  // Get date for header + filename
+  const dateInput = document.getElementById("reportDate");
+  let fileDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split("T")[0];
+
+  // Title
   doc.setFontSize(16);
-  doc.text("Daily Inventory Report", 14, 20);
+  doc.text("Daily Inventory Report", 14, 15);
+  doc.setFontSize(12);
+  doc.text("Date: " + fileDate, 14, 25);
 
-  let y = 30;
+  // Extract table data
+  let headers = [];
+  let rows = [];
 
-  // Loop through each table row
-  document.querySelectorAll("table tr").forEach((row) => {
-    let rowData = [];
+  document.querySelectorAll("table thead tr th").forEach((th) => {
+    headers.push(th.textContent.trim());
+  });
 
-    row.querySelectorAll("td").forEach((cell) => {
-      // look inside the cell for inputs / textareas / selects
-      const input = cell.querySelector("input, textarea, select");
-
+  document.querySelectorAll("table tbody tr").forEach((tr) => {
+    let row = [];
+    tr.querySelectorAll("td").forEach((td) => {
+      let input = td.querySelector("input, textarea, select");
       if (input) {
-        rowData.push(input.value || "");
+        row.push(input.value || "");
       } else {
-        // if no input, just take the cell text (like item name)
-        let text = cell.textContent.trim();
-        if (text) rowData.push(text);
+        row.push(td.textContent.trim());
       }
     });
-
-    if (rowData.length > 0) {
-      doc.setFontSize(10);
-      doc.text(rowData.join(" | "), 14, y);
-      y += 7;
-    }
+    if (row.length > 0) rows.push(row);
   });
+
+  // Build table
+  doc.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 35,
+    theme: "grid",
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { fillColor: [200, 200, 200] }
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 10;
 
   // Notes section
   let notes = [];
   document.querySelectorAll(".notes input").forEach((note) => {
-    notes.push(note.value || "");
+    if (note.value) notes.push(note.value);
   });
 
   if (notes.length > 0) {
-    y += 10;
     doc.setFontSize(12);
-    doc.text("Notes:", 14, y);
-    y += 6;
+    doc.text("Notes:", 14, finalY);
+    finalY += 6;
     notes.forEach((n) => {
-      doc.text("- " + n, 20, y);
-      y += 6;
+      doc.setFontSize(10);
+      doc.text("- " + n, 20, finalY);
+      finalY += 5;
     });
   }
 
   // Daily Sales
   const dailySales = document.getElementById("dailySales");
-  if (dailySales) {
-    y += 10;
-    doc.text("Daily Sales: " + (dailySales.value || ""), 14, y);
+  if (dailySales && dailySales.value) {
+    finalY += 8;
+    doc.setFontSize(12);
+    doc.text("Daily Sales: " + dailySales.value, 14, finalY);
   }
 
-  // Get date for filename
-  const dateInput = document.getElementById("reportDate"); // make sure your date input has this id
-  let fileDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split("T")[0];
-
+  // Save PDF
   doc.save(`inventory-report-${fileDate}.pdf`);
 }
+
 
 
 
@@ -301,5 +315,6 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+
 
 

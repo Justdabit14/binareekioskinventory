@@ -210,18 +210,22 @@ td:first-child { text-align: left; padding-left: 8px; }
     headers.push(th.textContent.trim());
   });
 
-  document.querySelectorAll("table tbody tr").forEach((tr) => {
-    let row = [];
-    tr.querySelectorAll("td").forEach((td) => {
-      let input = td.querySelector("input, textarea, select");
-      if (input) {
-        row.push(input.value || "");
+document.querySelectorAll("table tbody tr").forEach((tr) => {
+  let row = [];
+  tr.querySelectorAll("td").forEach((td) => {
+    let input = td.querySelector("input, textarea, select");
+    if (input) {
+      if (input.type === "checkbox") {
+        row.push(input.checked ? "✓" : ""); // Show tick mark if checked
       } else {
-        row.push(td.textContent.trim());
+        row.push(input.value || "");
       }
-    });
-    if (row.length > 0) rows.push(row);
+    } else {
+      row.push(td.textContent.trim());
+    }
   });
+  if (row.length > 0) rows.push(row);
+});
 
   // Build table
   doc.autoTable({
@@ -315,6 +319,7 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+
 
 
 

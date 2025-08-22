@@ -39,31 +39,35 @@ td:first-child { text-align: left; padding-left: 8px; }
   <h1>Daily Stock Update</h1>
   <label>Date: <input type="date" id="date"></label>
 
-  <table id="stockTable">
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th>Opening</th>
-        <th>Closing</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <!-- Wrap all main content -->
+  <div id="mainContent">
+    <table id="stockTable">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Opening</th>
+          <th>Closing</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-  <div class="bottom-section">
-    <h3>Notes</h3>
-    <div class="notes">
-      <input type="text" id="note1" placeholder="• Note 1">
-      <input type="text" id="note2" placeholder="• Note 2">
-      <input type="text" id="note3" placeholder="• Note 3">
-    </div>
+    <div class="bottom-section">
+      <h3>Notes</h3>
+      <div class="notes">
+        <input type="text" id="note1" placeholder="• Note 1">
+        <input type="text" id="note2" placeholder="• Note 2">
+        <input type="text" id="note3" placeholder="• Note 3">
+      </div>
 
-    <h3>Daily Sales</h3>
-    <div class="sales">
-      <input type="number" id="dailySales" placeholder="Enter daily sales (RM)">
+      <h3>Daily Sales</h3>
+      <div class="sales">
+        <input type="number" id="dailySales" placeholder="Enter daily sales (RM)">
+      </div>
     </div>
   </div>
+  <!-- End mainContent -->
 
   <button onclick="downloadPDF()">⬇ Download PDF</button>
   <button class="clear-btn" onclick="clearAll()">🗑 Clear All</button>
@@ -152,7 +156,6 @@ td:first-child { text-align: left; padding-left: 8px; }
             </tr>`;
         }
         else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat)) {
-          // Free text for sauces, spices, cheese, sayur
           rowHTML = `
             <tr>
               <td>${item}</td>
@@ -165,7 +168,6 @@ td:first-child { text-align: left; padding-left: 8px; }
             </tr>`;
         } 
         else {
-          // Default: pkt + pcs
           rowHTML = `
             <tr>
               <td>${item}</td>
@@ -188,96 +190,78 @@ td:first-child { text-align: left; padding-left: 8px; }
     });
 
     // PDF Export
-  function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("p", "mm", "a4"); // A4 portrait
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF("p", "mm", "a4");
 
-  // Title
-  let dateInput = document.getElementById("dateInput");
-  let date = dateInput ? (dateInput.value || new Date().toLocaleDateString()) : new Date().toLocaleDateString();
-  doc.setFontSize(12);
-  doc.text(`Inventory Report - ${date}`, 14, 15);
+      // Title
+      let dateInput = document.getElementById("date");
+      let date = dateInput ? (dateInput.value || new Date().toLocaleDateString()) : new Date().toLocaleDateString();
+      doc.setFontSize(12);
+      doc.text(`Inventory Report - ${date}`, 14, 15);
 
-  // 1. Collect headers
-  let headers = [];
-  document.querySelectorAll("table thead th").forEach((th) => {
-    headers.push(th.textContent.trim());
-  });
+      // Collect headers
+      let headers = [];
+      document.querySelectorAll("table thead th").forEach((th) => {
+        headers.push(th.textContent.trim());
+      });
 
-  // 2. Collect rows
-  let rows = [];
-  document.querySelectorAll("tbody tr").forEach((tr) => {
-    let row = [];
-    tr.querySelectorAll("td").forEach((td) => {
-      let input = td.querySelector("input, textarea, select");
-      if (input) {
-        if (input.type === "checkbox") {
-          row.push(input.checked ? "✓" : "");
-        } else {
-          row.push(input.value || "");
-        }
-      } else {
-        row.push(td.textContent.trim());
-      }
-    });
-    if (row.length > 0) rows.push(row);
-  });
-
-  // 3. Render scaled table to fit into one page
-  doc.autoTable({
-    head: [headers],
-    body: rows,
-    startY: 22,
-    theme: "grid",
-    styles: { fontSize: 8, cellPadding: 1 },
-    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
-    margin: { left: 8, right: 8 },
-    tableWidth: "auto",
-    pageBreak: "avoid",   // prevent going to next page
-    didDrawPage: function (data) {
-      // Scale table if needed
-      let tableHeight = data.cursor.y;
-      let pageHeight = doc.internal.pageSize.getHeight() - 40;
-      if (tableHeight > pageHeight) {
-        let scaleFactor = pageHeight / tableHeight;
-        doc.autoTable({
-          head: [headers],
-          body: rows,
-          theme: "grid",
-          styles: { fontSize: 7 * scaleFactor, cellPadding: 0.8 },
-          margin: { left: 8, right: 8 },
-          tableWidth: "auto",
-          startY: 22,
+      // Collect rows
+      let rows = [];
+      document.querySelectorAll("tbody tr").forEach((tr) => {
+        let row = [];
+        tr.querySelectorAll("td").forEach((td) => {
+          let input = td.querySelector("input, textarea, select");
+          if (input) {
+            if (input.type === "checkbox") {
+              row.push(input.checked ? "✓" : "");
+            } else {
+              row.push(input.value || "");
+            }
+          } else {
+            row.push(td.textContent.trim());
+          }
         });
+        if (row.length > 0) rows.push(row);
+      });
+
+      // Render table
+      doc.autoTable({
+        head: [headers],
+        body: rows,
+        startY: 22,
+        theme: "grid",
+        styles: { fontSize: 8, cellPadding: 1 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
+        margin: { left: 8, right: 8 },
+        tableWidth: "auto",
+        pageBreak: "avoid"
+      });
+
+      // Notes
+      let finalY = doc.lastAutoTable.finalY + 6;
+      doc.setFontSize(9);
+      doc.text("Notes:", 14, finalY);
+
+      let notes = document.querySelectorAll(".notes input");
+      let yPos = finalY + 5;
+      notes.forEach((note) => {
+        if (note.value.trim() !== "") {
+          doc.text(`• ${note.value}`, 20, yPos);
+          yPos += 4;
+        }
+      });
+
+      // Daily Sales
+      let salesInput = document.getElementById("dailySales");
+      if (salesInput && salesInput.value.trim() !== "") {
+        yPos += 5;
+        doc.text(`Daily Sales: RM ${salesInput.value}`, 14, yPos);
       }
+
+      // Save
+      doc.save(`inventory-${date}.pdf`);
     }
-  });
-
-  // 4. Notes section
-  let finalY = doc.lastAutoTable.finalY + 6;
-  doc.setFontSize(9);
-  doc.text("Notes:", 14, finalY);
-
-  let notes = document.querySelectorAll(".notes input");
-  let yPos = finalY + 5;
-  notes.forEach((note) => {
-    if (note.value.trim() !== "") {
-      doc.text(`• ${note.value}`, 20, yPos);
-      yPos += 4;
-    }
-  });
-
-  // 5. Daily Sales
-  let salesInput = document.getElementById("dailySales");
-  if (salesInput && salesInput.value.trim() !== "") {
-    yPos += 5;
-    doc.text(`Daily Sales: RM ${salesInput.value}`, 14, yPos);
-  }
-
-  // 6. Save
-  doc.save(`inventory-${date}.pdf`);
-}
-
 
     // Clear all
     function clearAll() {
@@ -327,10 +311,3 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
-
-
-
-
-
-
-

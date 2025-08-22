@@ -237,6 +237,8 @@
   // ✅ Export as Blob and trigger download
   const pdfBlob = pdf.output("blob");
   const blobUrl = URL.createObjectURL(pdfBlob);
+  window.location.href = blobUrl;
+
 
   const link = document.createElement("a");
   link.href = blobUrl;
@@ -253,7 +255,7 @@
 
     // Clear all
     function clearAll() {
-      const password = prompt("Enter password to clear all:");
+      const password = prompt("Enter password to clear all (Asree's Only):");
       if (password === "123") {
         document.querySelectorAll("input[type='number'], input[type='text']").forEach(input => input.value = "");
         document.querySelectorAll("input[type='checkbox']").forEach(chk => chk.checked = false);
@@ -299,5 +301,6 @@
 
 </body>
 </html>
+
 
 

@@ -192,18 +192,20 @@ td:first-child { text-align: left; padding-left: 8px; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4"); // A4 portrait
 
-  // Title with selected date
-  let date = document.getElementById("dateInput").value || new Date().toLocaleDateString();
+  // Title with selected date (fallback to today)
+  let dateInput = document.getElementById("dateInput");
+  let date = dateInput ? (dateInput.value || new Date().toLocaleDateString()) : new Date().toLocaleDateString();
+
   doc.setFontSize(12);
   doc.text(`Inventory Report - ${date}`, 14, 15);
 
-  // 1. Collect headers (with Category)
+  // 1. Collect headers
   let headers = [];
   document.querySelectorAll("table thead th").forEach((th) => {
     headers.push(th.textContent.trim());
   });
 
-  // 2. Collect table rows (with category info)
+  // 2. Collect rows
   let rows = [];
   document.querySelectorAll("tbody tr").forEach((tr) => {
     let row = [];
@@ -213,7 +215,6 @@ td:first-child { text-align: left; padding-left: 8px; }
     tr.querySelectorAll("td").forEach((td, index) => {
       let input = td.querySelector("input, textarea, select");
       if (index === 0) {
-        // First column (Item name) → prepend category
         row.push(`${category} - ${td.textContent.trim()}`);
       } else if (input) {
         if (input.type === "checkbox") {
@@ -225,36 +226,37 @@ td:first-child { text-align: left; padding-left: 8px; }
         row.push(td.textContent.trim());
       }
     });
+
     if (row.length > 0) rows.push(row);
   });
 
-  // 3. Render the stock table, smaller & narrower
+  // 3. Render table
   doc.autoTable({
     head: [headers],
     body: rows,
     startY: 22,
     theme: "grid",
-    styles: { fontSize: 8, cellPadding: 2 }, // smaller font
+    styles: { fontSize: 8, cellPadding: 2 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
     columnStyles: {
-      0: { cellWidth: 50 }, // Item + Category column
+      0: { cellWidth: 50 },
       1: { cellWidth: 20 },
       2: { cellWidth: 20 },
       3: { cellWidth: 20 },
       4: { cellWidth: 20 },
       5: { cellWidth: 20 }
     },
-    margin: { left: 10, right: 10 } // narrower margins
+    margin: { left: 10, right: 10 }
   });
 
-  // 4. Notes section (below table)
+  // 4. Notes section
   let finalY = doc.lastAutoTable.finalY + 6;
   doc.setFontSize(10);
   doc.text("Notes:", 14, finalY);
 
   let notes = document.querySelectorAll(".notes input");
   let yPos = finalY + 5;
-  notes.forEach((note, i) => {
+  notes.forEach((note) => {
     if (note.value.trim() !== "") {
       doc.text(`• ${note.value}`, 20, yPos);
       yPos += 5;
@@ -268,7 +270,7 @@ td:first-child { text-align: left; padding-left: 8px; }
     doc.text(`Daily Sales: RM ${salesInput.value}`, 14, yPos);
   }
 
-  // 6. Save file with date
+  // 6. Save
   doc.save(`inventory-${date}.pdf`);
 }
 
@@ -322,6 +324,7 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+
 
 
 

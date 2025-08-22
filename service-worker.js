@@ -1,4 +1,4 @@
-const CACHE_NAME = "stock-app-v2";
+const CACHE_NAME = "inventory-cache-v4"; // bump version
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
@@ -42,3 +42,4 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+

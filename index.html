@@ -74,8 +74,9 @@ td:first-child { text-align: left; padding-left: 8px; }
   <button onclick="saveData()">💾 Save</button>
 
   <!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
   <script>
     // Categories + items
     const categories = {
@@ -190,78 +191,46 @@ td:first-child { text-align: left; padding-left: 8px; }
     });
 
     // PDF Export
-    function downloadPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF("p", "mm", "a4");
+    async function downloadPDF() {
+  const { jsPDF } = window.jspdf;
 
-      // Title
-      let dateInput = document.getElementById("date");
-      let date = dateInput ? (dateInput.value || new Date().toLocaleDateString()) : new Date().toLocaleDateString();
-      doc.setFontSize(12);
-      doc.text(`Inventory Report - ${date}`, 14, 15);
+  // Clone main content (so we don't mess up live page)
+  const content = document.getElementById("mainContent").cloneNode(true);
 
-      // Collect headers
-      let headers = [];
-      document.querySelectorAll("table thead th").forEach((th) => {
-        headers.push(th.textContent.trim());
-      });
+  // Convert checkboxes to ✓ symbols or empty box
+  content.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    const span = document.createElement("span");
+    span.style.display = "inline-block";
+    span.style.width = "16px";
+    span.style.height = "16px";
+    span.style.border = "1px solid black";
+    span.style.textAlign = "center";
+    span.style.fontSize = "14px";
+    span.style.lineHeight = "16px";
+    span.textContent = cb.checked ? "✓" : "";
+    cb.parentNode.replaceChild(span, cb);
+  });
 
-      // Collect rows
-      let rows = [];
-      document.querySelectorAll("tbody tr").forEach((tr) => {
-        let row = [];
-        tr.querySelectorAll("td").forEach((td) => {
-          let input = td.querySelector("input, textarea, select");
-          if (input) {
-            if (input.type === "checkbox") {
-              row.push(input.checked ? "✓" : "");
-            } else {
-              row.push(input.value || "");
-            }
-          } else {
-            row.push(td.textContent.trim());
-          }
-        });
-        if (row.length > 0) rows.push(row);
-      });
+  // Render with html2canvas
+  const canvas = await html2canvas(content, { scale: 2 });
+  const imgData = canvas.toDataURL("image/png");
 
-      // Render table
-      doc.autoTable({
-        head: [headers],
-        body: rows,
-        startY: 22,
-        theme: "grid",
-        styles: { fontSize: 8, cellPadding: 1 },
-        headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
-        margin: { left: 8, right: 8 },
-        tableWidth: "auto",
-        pageBreak: "avoid"
-      });
+  // Create PDF (A4 size)
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      // Notes
-      let finalY = doc.lastAutoTable.finalY + 6;
-      doc.setFontSize(9);
-      doc.text("Notes:", 14, finalY);
+  const imgProps = pdf.getImageProperties(imgData);
+  const imgWidth = pdfWidth;
+  const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
-      let notes = document.querySelectorAll(".notes input");
-      let yPos = finalY + 5;
-      notes.forEach((note) => {
-        if (note.value.trim() !== "") {
-          doc.text(`• ${note.value}`, 20, yPos);
-          yPos += 4;
-        }
-      });
+  // Add image
+  pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 
-      // Daily Sales
-      let salesInput = document.getElementById("dailySales");
-      if (salesInput && salesInput.value.trim() !== "") {
-        yPos += 5;
-        doc.text(`Daily Sales: RM ${salesInput.value}`, 14, yPos);
-      }
-
-      // Save
-      doc.save(`inventory-${date}.pdf`);
-    }
+  // Filename based on date
+  let dateInput = document.getElementById("dateInput")?.value || "stock";
+  pdf.save(`${dateInput}_stock.pdf`);
+}
 
     // Clear all
     function clearAll() {
@@ -311,3 +280,4 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+

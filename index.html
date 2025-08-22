@@ -198,7 +198,7 @@
   if (!selectedDate) selectedDate = new Date().toISOString().split("T")[0];
   const filename = `Stock-${selectedDate}.pdf`;
 
-  // Swap real checkboxes with symbols
+  // Swap real checkboxes with symbols so html2canvas captures them
   const swaps = [];
   mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
     swaps.push({ element: cb });
@@ -209,9 +209,26 @@
     cb.parentNode.insertBefore(span, cb.nextSibling);
   });
 
+  // ✅ Temporarily widen + shrink font for clean PDF layout
+  const originalWidth = mainContent.style.width;
+  const originalMaxWidth = mainContent.style.maxWidth;
+  const originalFontSize = mainContent.style.fontSize;
+  const originalLineHeight = mainContent.style.lineHeight;
+
+  mainContent.style.width = "1000px";
+  mainContent.style.maxWidth = "1000px";
+  mainContent.style.fontSize = "12px";     // shrink slightly
+  mainContent.style.lineHeight = "1.2";    // tighten spacing
+
   const canvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
 
-  // Restore checkboxes
+  // Restore styles
+  mainContent.style.width = originalWidth;
+  mainContent.style.maxWidth = originalMaxWidth;
+  mainContent.style.fontSize = originalFontSize;
+  mainContent.style.lineHeight = originalLineHeight;
+
+  // Restore real checkboxes
   swaps.forEach(s => {
     s.element.style.display = "";
     const next = s.element.nextSibling;
@@ -223,32 +240,20 @@
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  const ratio = Math.min(pageWidth / canvas.width, (pageHeight - 12) / canvas.height);
-  const imgWidth = canvas.width * ratio;
-  const imgHeight = canvas.height * ratio;
+  // Fit perfectly into A4 height (after header)
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+  const scaleFactor = (pageHeight - 15) / imgHeight; // reserve space for header
+  const finalHeight = imgHeight * scaleFactor;
 
   // Add date header
   pdf.setFontSize(12);
   pdf.text(`Date: ${selectedDate}`, 10, 8);
 
-  // Add main image
-  pdf.addImage(imgData, "PNG", 0, 12, imgWidth, imgHeight);
-
-  // ✅ Export as Blob and trigger download
-  const pdfBlob = pdf.output("blob");
-  const blobUrl = URL.createObjectURL(pdfBlob);
-  window.location.href = blobUrl;
-
-
-  const link = document.createElement("a");
-  link.href = blobUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-
-  // Clean up
-  document.body.removeChild(link);
-  URL.revokeObjectURL(blobUrl);
+  // Draw resized image below the header
+  pdf.addImage(imgData, "PNG", 0, 12, pageWidth, finalHeight);
+  pdf.save(filename);
 }
 
 
@@ -301,6 +306,7 @@
 
 </body>
 </html>
+
 
 
 

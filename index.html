@@ -193,12 +193,12 @@
   const { jsPDF } = window.jspdf;
   const mainContent = document.getElementById("mainContent");
 
-  // Date for header + filename (uses the existing #date input)
+  // Date for header + filename
   let selectedDate = document.getElementById("date")?.value;
   if (!selectedDate) selectedDate = new Date().toISOString().split("T")[0];
   const filename = `Stock-${selectedDate}.pdf`;
 
-  // Swap real checkboxes with symbols so html2canvas captures them
+  // Swap real checkboxes with symbols
   const swaps = [];
   mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
     swaps.push({ element: cb });
@@ -211,7 +211,7 @@
 
   const canvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
 
-  // Restore real checkboxes
+  // Restore checkboxes
   swaps.forEach(s => {
     s.element.style.display = "";
     const next = s.element.nextSibling;
@@ -231,27 +231,21 @@
   pdf.setFontSize(12);
   pdf.text(`Date: ${selectedDate}`, 10, 8);
 
-  // Draw image below the header
+  // Add the main image
   pdf.addImage(imgData, "PNG", 0, 12, imgWidth, imgHeight);
 
-  // ✅ Mobile-friendly download
-  try {
-    const pdfBlob = pdf.output("blob");
-    const blobUrl = URL.createObjectURL(pdfBlob);
+  // ✅ Check if mobile device
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(blobUrl);
-  } catch (err) {
-    // Fallback: open PDF in new tab
+  if (isMobile) {
+    // Open in new tab (user can save/share manually)
     window.open(pdf.output("bloburl"), "_blank");
+  } else {
+    // Desktop: force download
+    pdf.save(filename);
   }
 }
+
 
     // Clear all
     function clearAll() {
@@ -301,3 +295,4 @@
 
 </body>
 </html>
+

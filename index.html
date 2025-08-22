@@ -196,12 +196,20 @@ td:first-child { text-align: left; padding-left: 8px; }
 
   let y = 30;
 
-  // Loop through table rows
+  // Loop through each table row
   document.querySelectorAll("table tr").forEach((row) => {
     let rowData = [];
-    row.querySelectorAll("td input, td textarea, td select").forEach((input) => {
+
+    row.querySelectorAll("td").forEach((cell) => {
+      // look inside the cell for inputs / textareas / selects
+      const input = cell.querySelector("input, textarea, select");
+
       if (input) {
-        rowData.push(input.value || "");  // prevent null crash
+        rowData.push(input.value || "");
+      } else {
+        // if no input, just take the cell text (like item name)
+        let text = cell.textContent.trim();
+        if (text) rowData.push(text);
       }
     });
 
@@ -215,8 +223,9 @@ td:first-child { text-align: left; padding-left: 8px; }
   // Notes section
   let notes = [];
   document.querySelectorAll(".notes input").forEach((note) => {
-    if (note) notes.push(note.value || "");
+    notes.push(note.value || "");
   });
+
   if (notes.length > 0) {
     y += 10;
     doc.setFontSize(12);
@@ -232,11 +241,16 @@ td:first-child { text-align: left; padding-left: 8px; }
   const dailySales = document.getElementById("dailySales");
   if (dailySales) {
     y += 10;
-    doc.text("Daily Sales: " + dailySales.value, 14, y);
+    doc.text("Daily Sales: " + (dailySales.value || ""), 14, y);
   }
 
-  doc.save("Daily Stock.pdf");
+  // Get date for filename
+  const dateInput = document.getElementById("reportDate"); // make sure your date input has this id
+  let fileDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split("T")[0];
+
+  doc.save(`inventory-report-${fileDate}.pdf`);
 }
+
 
 
     // Clear all
@@ -287,4 +301,5 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+
 

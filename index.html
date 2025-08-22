@@ -191,46 +191,52 @@ td:first-child { text-align: left; padding-left: 8px; }
     });
 
     // PDF Export
-    async function downloadPDF() {
+  async function downloadPDF() {
   const { jsPDF } = window.jspdf;
 
-  // Clone main content (so we don't mess up live page)
+  // Get today's date for filename
+  const today = new Date().toISOString().split("T")[0];
+  const filename = `Stock-${today}.pdf`;
+
+  // Clone the content so we can safely modify checkboxes
   const content = document.getElementById("mainContent").cloneNode(true);
 
-  // Convert checkboxes to ✓ symbols or empty box
-  content.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+  // Convert checkboxes to symbols for PDF
+  content.querySelectorAll("input[type=checkbox]").forEach(cb => {
     const span = document.createElement("span");
-    span.style.display = "inline-block";
-    span.style.width = "16px";
-    span.style.height = "16px";
-    span.style.border = "1px solid black";
-    span.style.textAlign = "center";
-    span.style.fontSize = "14px";
-    span.style.lineHeight = "16px";
-    span.textContent = cb.checked ? "✓" : "";
+    span.textContent = cb.checked ? "☑" : "☐";
     cb.parentNode.replaceChild(span, cb);
   });
 
-  // Render with html2canvas
-  const canvas = await html2canvas(content, { scale: 2 });
+  // Use html2canvas to capture content
+  const canvas = await html2canvas(content, {
+    scale: 2, // better quality
+    useCORS: true
+  });
+
   const imgData = canvas.toDataURL("image/png");
 
-  // Create PDF (A4 size)
+  // PDF settings
   const pdf = new jsPDF("p", "mm", "a4");
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = pdf.internal.pageSize.getHeight();
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-  const imgProps = pdf.getImageProperties(imgData);
-  const imgWidth = pdfWidth;
-  const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+  // Scale image to fit width
+  const imgProps = {
+    width: canvas.width,
+    height: canvas.height
+  };
+  const ratio = Math.min(pageWidth / imgProps.width, pageHeight / imgProps.height);
 
-  // Add image
+  const imgWidth = imgProps.width * ratio;
+  const imgHeight = imgProps.height * ratio;
+
   pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 
-  // Filename based on date
-  let dateInput = document.getElementById("dateInput")?.value || "stock";
-  pdf.save(`${dateInput}_stock.pdf`);
+  pdf.save(filename);
 }
+
+
 
     // Clear all
     function clearAll() {
@@ -280,4 +286,5 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+
 

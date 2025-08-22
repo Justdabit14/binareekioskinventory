@@ -38,6 +38,14 @@
       display: flex;
       gap: 10px;
     }
+
+    /* ✅ Only for PDF export (shrinks content so it fits in A4) */
+    .pdf-mode {
+      font-size: 10px;
+    }
+    .pdf-mode table {
+      font-size: 10px;
+    }
   </style>
 </head>
 <body>
@@ -116,6 +124,9 @@
       }
       const filename = `Stock-${selectedDate}.pdf`;
 
+      // ✅ Add temporary PDF styling
+      mainContent.classList.add("pdf-mode");
+
       // ✅ Replace checkboxes with symbols for PDF
       const checkboxes = [];
       mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
@@ -129,13 +140,14 @@
       // Render content
       const canvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
 
-      // ✅ Restore checkboxes
+      // ✅ Restore checkboxes + remove temporary class
       checkboxes.forEach(cbObj => {
         cbObj.element.style.display = "";
         if (cbObj.element.nextSibling && cbObj.element.nextSibling.textContent?.match(/[☑☐]/)) {
           cbObj.element.nextSibling.remove();
         }
       });
+      mainContent.classList.remove("pdf-mode");
 
       // Generate PDF
       const imgData = canvas.toDataURL("image/png");

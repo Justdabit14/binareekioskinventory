@@ -89,52 +89,120 @@
     </div>
 
     <!-- Daily Sales -->
-    <div class="daily-sales">
-      <strong>Daily Sales:</strong> <input type="text" placeholder="Enter total">
+   <h3>Daily Sales</h3>
+    <div class="sales">
+      <input type="number" id="dailySales" placeholder="Enter daily sales (RM)">
     </div>
   </div>
+</div>
+<!-- End mainContent -->
 
-  <!-- Buttons -->
-  <div class="controls">
-    <button onclick="downloadPDF()">Download PDF</button>
-    <button onclick="clearAll()">Clear All</button>
-  </div>
+<button onclick="downloadPDF()">⬇ Download PDF</button>
+<button class="clear-btn" onclick="clearAll()">🗑 Clear All</button>
+<button onclick="saveData()">💾 Save</button>
 
-  <!-- Scripts -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>
-    async function downloadPDF() {
-      const { jsPDF } = window.jspdf;
-      const mainContent = document.getElementById("main-content");
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// Categories + items
+const categories = {
+  "Patty": ["Daging","Ayam", "Kambing", "Sloppy Joe", "Smash Burger", "Crispy Chicken"],
+  "Oblong": ["Daging","Ayam", "Kambing"],
+  "Bread / Burger / Wrap": ["Bun", "Wrap","Oblong"],
+  "Sauces & Spices": [
+    "Chili Sauce", "Mayonnaise", "Special Sauce", "Cheese sauce", "Paprika Powder", "Curry Powder", "Garlic Powder", "Cayenne", "Worcestershire", "Black Pepper", "White Pepper", "Tomato Puree"
+  ],
+  "Cheese": ["Cheese Slice", "Cream Cheese"],
+  "Sayur": ["Onion", "Cucumber", "Salad"],
+  "Others": ["Paper Wrapping", "Fries", "Egg"]
+};
 
-      // ✅ Get date from input field for filename
-      let selectedDate = document.getElementById("dateInput")?.value;
-      if (!selectedDate) {
-        selectedDate = new Date().toISOString().split("T")[0];
-      }
-      const filename = `Stock-${selectedDate}.pdf`;
+const tbody = document.querySelector("#stockTable tbody");
 
-      // ✅ Replace checkboxes with symbols for PDF
-      const checkboxes = [];
-      mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
-        checkboxes.push({ element: cb, checked: cb.checked });
-        const span = document.createElement("span");
-        span.textContent = cb.checked ? "☑" : "☐";
-        cb.style.display = "none";
-        cb.parentNode.insertBefore(span, cb.nextSibling);
-      });
+// Generate rows
+Object.keys(categories).forEach(cat => {
+  tbody.innerHTML += `<tr class="category"><td colspan="4">${cat}</td></tr>`;
+  categories[cat].forEach(item => {
+    let rowHTML = "";
 
-      // Render content
-      const canvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
-
-      // ✅ Restore checkboxes
-      checkboxes.forEach(cbObj => {
-        cbObj.element.style.display = "";
-        if (cbObj.element.nextSibling && cbObj.element.nextSibling.textContent?.match(/[☑☐]/)) {
-          cbObj.element.nextSibling.remove();
-        }
-      });
+    // Special cases
+    if (item === "Sloppy Joe" || item === "Black Pepper" || item === "White Pepper") {
+      rowHTML = `<tr>
+        <td>${item}</td>
+        <td><input type="text" id="open-${item}" placeholder="Opening"></td>
+        <td><input type="text" id="close-${item}" placeholder="Closing"></td>
+        <td>
+          <label><input type="checkbox" id="beli-${item}"> Beli</label>
+          <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+        </td>
+      </tr>`;
+    } else if (item === "Smash Burger") {
+      rowHTML = `<tr>
+        <td>${item}</td>
+        <td><input type="number" id="openPcs-${item}" placeholder="Pcs"> pcs</td>
+        <td><input type="number" id="closePcs-${item}" placeholder="Pcs"> pcs</td>
+        <td>
+          <label><input type="checkbox" id="beli-${item}"> Beli</label>
+          <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+        </td>
+      </tr>`;
+    } else if (item === "Egg") {
+      rowHTML = `<tr>
+        <td>${item}</td>
+        <td>
+          <input type="number" id="openCtn-${item}" placeholder="Ctn"> ctn
+          <input type="number" id="openPcs-${item}" placeholder="Pcs"> pcs
+        </td>
+        <td>
+          <input type="number" id="closeCtn-${item}" placeholder="Ctn"> ctn
+          <input type="number" id="closePcs-${item}" placeholder="Pcs"> pcs
+        </td>
+        <td>
+          <label><input type="checkbox" id="beli-${item}"> Beli</label>
+          <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+        </td>
+      </tr>`;
+    } else if (item === "Tomato Puree") {
+      rowHTML = `<tr>
+        <td>${item}</td>
+        <td><input type="number" id="openCans-${item}" placeholder="Cans"> cans</td>
+        <td><input type="number" id="closeCans-${item}" placeholder="Cans"> cans</td>
+        <td>
+          <label><input type="checkbox" id="beli-${item}"> Beli</label>
+          <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+        </td>
+      </tr>`;
+    } else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat)) {
+      rowHTML = `<tr>
+        <td>${item}</td>
+        <td><input type="text" id="open-${item}" placeholder="Opening"></td>
+        <td><input type="text" id="close-${item}" placeholder="Closing"></td>
+        <td>
+          <label><input type="checkbox" id="beli-${item}"> Beli</label>
+          <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+        </td>
+      </tr>`;
+    } else {
+      rowHTML = `<tr>
+        <td>${item}</td>
+        <td>
+          <input type="number" id="openPkt-${item}" placeholder="Pkt"> pkt
+          <input type="number" id="openPcs-${item}" placeholder="Pcs"> pcs
+        </td>
+        <td>
+          <input type="number" id="closePkt-${item}" placeholder="Pkt"> pkt
+          <input type="number" id="closePcs-${item}" placeholder="Pcs"> pcs
+        </td>
+        <td>
+          <label><input type="checkbox" id="beli-${item}"> Beli</label>
+          <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+        </td>
+      </tr>`;
+    }
+    tbody.innerHTML += rowHTML;
+  });
+});
 
       // Generate PDF
       const imgData = canvas.toDataURL("image/png");
@@ -167,3 +235,4 @@
   </script>
 </body>
 </html>
+

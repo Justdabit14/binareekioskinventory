@@ -191,48 +191,50 @@ td:first-child { text-align: left; padding-left: 8px; }
     });
 
     // PDF Export
-  async function downloadPDF() {
+async function downloadPDF() {
   const { jsPDF } = window.jspdf;
 
-  // Get today's date for filename
   const today = new Date().toISOString().split("T")[0];
   const filename = `Stock-${today}.pdf`;
 
-  // Clone the content so we can safely modify checkboxes
-  const content = document.getElementById("mainContent").cloneNode(true);
+  const mainContent = document.getElementById("mainContent");
 
-  // Convert checkboxes to symbols for PDF
-  content.querySelectorAll("input[type=checkbox]").forEach(cb => {
+  // Backup checkboxes
+  const checkboxes = [];
+  mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    checkboxes.push({ element: cb, checked: cb.checked });
+
     const span = document.createElement("span");
     span.textContent = cb.checked ? "☑" : "☐";
-    cb.parentNode.replaceChild(span, cb);
+    cb.style.display = "none";
+    cb.parentNode.insertBefore(span, cb.nextSibling);
   });
 
-  // Use html2canvas to capture content
-  const canvas = await html2canvas(content, {
-    scale: 2, // better quality
+  // Render actual DOM node
+  const canvas = await html2canvas(mainContent, {
+    scale: 2,
     useCORS: true
+  });
+
+  // Restore checkboxes
+  checkboxes.forEach(cbObj => {
+    cbObj.element.style.display = "";
+    if (cbObj.element.nextSibling && cbObj.element.nextSibling.textContent?.match(/[☑☐]/)) {
+      cbObj.element.nextSibling.remove();
+    }
   });
 
   const imgData = canvas.toDataURL("image/png");
 
-  // PDF settings
   const pdf = new jsPDF("p", "mm", "a4");
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
 
-  // Scale image to fit width
-  const imgProps = {
-    width: canvas.width,
-    height: canvas.height
-  };
-  const ratio = Math.min(pageWidth / imgProps.width, pageHeight / imgProps.height);
-
-  const imgWidth = imgProps.width * ratio;
-  const imgHeight = imgProps.height * ratio;
+  const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+  const imgWidth = canvas.width * ratio;
+  const imgHeight = canvas.height * ratio;
 
   pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-
   pdf.save(filename);
 }
 
@@ -286,5 +288,6 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+
 
 

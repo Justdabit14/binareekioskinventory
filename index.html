@@ -192,10 +192,9 @@ td:first-child { text-align: left; padding-left: 8px; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "mm", "a4"); // A4 portrait
 
-  // Title with selected date (fallback to today)
+  // Title
   let dateInput = document.getElementById("dateInput");
   let date = dateInput ? (dateInput.value || new Date().toLocaleDateString()) : new Date().toLocaleDateString();
-
   doc.setFontSize(12);
   doc.text(`Inventory Report - ${date}`, 14, 15);
 
@@ -209,14 +208,9 @@ td:first-child { text-align: left; padding-left: 8px; }
   let rows = [];
   document.querySelectorAll("tbody tr").forEach((tr) => {
     let row = [];
-    let categoryRow = tr.closest("tbody").previousElementSibling; // h2 above tbody
-    let category = categoryRow ? categoryRow.textContent.trim() : "";
-
-    tr.querySelectorAll("td").forEach((td, index) => {
+    tr.querySelectorAll("td").forEach((td) => {
       let input = td.querySelector("input, textarea, select");
-      if (index === 0) {
-        row.push(`${category} - ${td.textContent.trim()}`);
-      } else if (input) {
+      if (input) {
         if (input.type === "checkbox") {
           row.push(input.checked ? "✓" : "");
         } else {
@@ -226,32 +220,42 @@ td:first-child { text-align: left; padding-left: 8px; }
         row.push(td.textContent.trim());
       }
     });
-
     if (row.length > 0) rows.push(row);
   });
 
-  // 3. Render table
+  // 3. Render scaled table to fit into one page
   doc.autoTable({
     head: [headers],
     body: rows,
     startY: 22,
     theme: "grid",
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 8, cellPadding: 1 },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 9 },
-    columnStyles: {
-      0: { cellWidth: 50 },
-      1: { cellWidth: 20 },
-      2: { cellWidth: 20 },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 20 },
-      5: { cellWidth: 20 }
-    },
-    margin: { left: 10, right: 10 }
+    margin: { left: 8, right: 8 },
+    tableWidth: "auto",
+    pageBreak: "avoid",   // prevent going to next page
+    didDrawPage: function (data) {
+      // Scale table if needed
+      let tableHeight = data.cursor.y;
+      let pageHeight = doc.internal.pageSize.getHeight() - 40;
+      if (tableHeight > pageHeight) {
+        let scaleFactor = pageHeight / tableHeight;
+        doc.autoTable({
+          head: [headers],
+          body: rows,
+          theme: "grid",
+          styles: { fontSize: 7 * scaleFactor, cellPadding: 0.8 },
+          margin: { left: 8, right: 8 },
+          tableWidth: "auto",
+          startY: 22,
+        });
+      }
+    }
   });
 
   // 4. Notes section
   let finalY = doc.lastAutoTable.finalY + 6;
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.text("Notes:", 14, finalY);
 
   let notes = document.querySelectorAll(".notes input");
@@ -259,7 +263,7 @@ td:first-child { text-align: left; padding-left: 8px; }
   notes.forEach((note) => {
     if (note.value.trim() !== "") {
       doc.text(`• ${note.value}`, 20, yPos);
-      yPos += 5;
+      yPos += 4;
     }
   });
 
@@ -273,7 +277,6 @@ td:first-child { text-align: left; padding-left: 8px; }
   // 6. Save
   doc.save(`inventory-${date}.pdf`);
 }
-
 
 
     // Clear all
@@ -324,6 +327,7 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
+
 
 
 

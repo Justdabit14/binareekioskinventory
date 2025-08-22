@@ -189,7 +189,7 @@
     });
 
     // PDF Export (adds date text + preserves checkmarks)
-   async function downloadPDF() {
+  async function downloadPDF() {
   const { jsPDF } = window.jspdf;
   const mainContent = document.getElementById("mainContent");
 
@@ -231,20 +231,24 @@
   pdf.setFontSize(12);
   pdf.text(`Date: ${selectedDate}`, 10, 8);
 
-  // Add the main image
+  // Add main image
   pdf.addImage(imgData, "PNG", 0, 12, imgWidth, imgHeight);
 
-  // ✅ Check if mobile device
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  // ✅ Export as Blob and trigger download
+  const pdfBlob = pdf.output("blob");
+  const blobUrl = URL.createObjectURL(pdfBlob);
 
-  if (isMobile) {
-    // Open in new tab (user can save/share manually)
-    window.open(pdf.output("bloburl"), "_blank");
-  } else {
-    // Desktop: force download
-    pdf.save(filename);
-  }
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+
+  // Clean up
+  document.body.removeChild(link);
+  URL.revokeObjectURL(blobUrl);
 }
+
 
 
     // Clear all
@@ -295,4 +299,5 @@
 
 </body>
 </html>
+
 

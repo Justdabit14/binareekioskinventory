@@ -98,7 +98,7 @@
         let rowHTML = "";
 
         // Special cases
-        if (item === "Sloppy Joe" || item === "Black Pepper" || item === "White Pepper") {
+        if (item === "Sloppy Joe" || item === "Black Pepper" || item === "White Pepper" || item === "Margarine") {
           rowHTML = `
             <tr>
               <td>${item}</td>
@@ -152,7 +152,7 @@
               </td>
             </tr>`;
         }
-        else if (["Sauces & Spices", "Cheese", "Sayur", "Margarine"].includes(cat)) {
+        else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat)) {
           // Free text for sauces, spices, cheese, sayur
           rowHTML = `
             <tr>
@@ -315,6 +315,7 @@
 
 </body>
 </html>
+
 
 
 

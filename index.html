@@ -263,48 +263,54 @@ td:first-child { text-align: left; padding-left: 8px; }
         startY += 6;
 
         categories[cat].forEach(item => {
-          let opening = "", closing = "";
+          let opening = "-", closing = "-";
+
+          // helper: safely get element value or checkbox state
+          const el = id => document.getElementById(id);
+          const val = id => {
+            const e = el(id);
+            if (!e) return "-";
+            if (e.type === "checkbox") return e.checked;
+            return e.value === "" ? "-" : e.value;
+          };
 
           if (["Sloppy Joe", "Black Pepper", "White Pepper"].includes(item) ||
               ["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil") {
-            opening = document.getElementById(`open-${item}`).value || "-";
-            closing = document.getElementById(`close-${item}`).value || "-";
+            opening = val(`open-${item}`);
+            closing = val(`close-${item}`);
           } 
           else if (item === "Smash Burger") {
-            opening = (document.getElementById(`openPcs-${item}`).value || "-") + " pcs";
-            closing = (document.getElementById(`closePcs-${item}`).value || "-") + " pcs";
+            const o = val(`openPcs-${item}`); opening = o === "-" ? "-" : o + " pcs";
+            const c = val(`closePcs-${item}`); closing = c === "-" ? "-" : c + " pcs";
           }
           else if (item === "Egg") {
-            const openCtn = document.getElementById(`openCtn-${item}`).value || "-";
-            const openPcs = document.getElementById(`openPcs-${item}`).value || "-";
-            const closeCtn = document.getElementById(`closeCtn-${item}`).value || "-";
-            const closePcs = document.getElementById(`closePcs-${item}`).value || "-";
-            opening = openCtn + " ctn / " + openPcs + " pcs";
-            closing = closeCtn + " ctn / " + closePcs + " pcs";
+            const openCtn = val(`openCtn-${item}`), openPcs = val(`openPcs-${item}`);
+            const closeCtn = val(`closeCtn-${item}`), closePcs = val(`closePcs-${item}`);
+            opening = (openCtn === "-" ? "-" : openCtn) + " ctn / " + (openPcs === "-" ? "-" : openPcs) + " pcs";
+            closing = (closeCtn === "-" ? "-" : closeCtn) + " ctn / " + (closePcs === "-" ? "-" : closePcs) + " pcs";
           }
           else if (item === "Tomato Puree") {
-            const openCans = document.getElementById(`openCans-${item}`).value || "-";
-            const closeCans = document.getElementById(`closeCans-${item}`).value || "-";
-            opening = openCans + " cans";
-            closing = closeCans + " cans";
+            const openCans = val(`openCans-${item}`), closeCans = val(`closeCans-${item}`);
+            opening = openCans === "-" ? "-" : openCans + " cans";
+            closing = closeCans === "-" ? "-" : closeCans + " cans";
           }
           else {
-            const openPkt = document.getElementById(`openPkt-${item}`).value || "-";
-            const openPcs = document.getElementById(`openPcs-${item}`).value || "-";
-            const closePkt = document.getElementById(`closePkt-${item}`).value || "-";
-            const closePcs = document.getElementById(`closePcs-${item}`).value || "-";
-            opening = openPkt + " pkt / " + openPcs + " pcs";
-            closing = closePkt + " pkt / " + closePcs + " pcs";
+            const openPkt = val(`openPkt-${item}`), openPcs = val(`openPcs-${item}`);
+            const closePkt = val(`closePkt-${item}`), closePcs = val(`closePcs-${item}`);
+            opening = (openPkt === "-" ? "-" : openPkt) + " pkt / " + (openPcs === "-" ? "-" : openPcs) + " pcs";
+            closing = (closePkt === "-" ? "-" : closePkt) + " pkt / " + (closePcs === "-" ? "-" : closePcs) + " pcs";
           }
 
-          const beli = document.getElementById(`beli-${item}`).checked ? "Beli" : "";
-          const bawak = document.getElementById(`bawak-${item}`).checked ? "Bawak" : "";
+          // status checkboxes - guard against missing elements
+          const beliEl = el(`beli-${item}`), bawakEl = el(`bawak-${item}`);
+          const beli = beliEl && beliEl.checked ? "Beli" : "";
+          const bawak = bawakEl && bawakEl.checked ? "Bawak" : "";
           const status = [beli, bawak].filter(Boolean).join(", ") || "-";
 
           doc.setFontSize(11);
           doc.text(item, 14, startY);
-          doc.text(opening, 70, startY);
-          doc.text(closing, 120, startY);
+          doc.text(String(opening), 70, startY);
+          doc.text(String(closing), 120, startY);
           doc.text(status, 170, startY);
 
           startY += 6;
@@ -319,15 +325,16 @@ td:first-child { text-align: left; padding-left: 8px; }
       doc.text("Notes:", 14, startY);
       startY += 6;
       ["note1", "note2", "note3"].forEach(id => {
-        const val = document.getElementById(id).value || "";
+        const val = document.getElementById(id) ? document.getElementById(id).value || "" : "";
         doc.text("• " + val, 20, startY);
         startY += 6;
       });
 
       // Sales & Capital
       startY += 6;
-      const sales = document.getElementById("dailySales").value || "-";
-      const capital = document.getElementById("dailyCapital").value || "-";
+      const salesEl = document.getElementById("dailySales"), capitalEl = document.getElementById("dailyCapital");
+      const sales = salesEl && salesEl.value ? salesEl.value : "-";
+      const capital = capitalEl && capitalEl.value ? capitalEl.value : "-";
       doc.text("Daily Sales: RM " + sales, 14, startY);
       doc.text("Daily Capital: RM " + capital, 110, startY);
 
@@ -335,8 +342,12 @@ td:first-child { text-align: left; padding-left: 8px; }
       startY += 6;
       const staffList = [];
       for (let i = 1; i <= 4; i++) {
-        const el = document.getElementById("staff" + i);
-        if (el && el.checked) staffList.push("Staff " + i);
+        const s = document.getElementById("staff" + i);
+        if (s && s.checked) {
+          // show label text if present, else fallback to Staff i
+          const label = s.parentElement ? s.parentElement.textContent.trim() : null;
+          staffList.push(label || ("Staff " + i));
+        }
       }
       const staffText = staffList.length ? staffList.join(", ") : "-";
       doc.text("Staffs: " + staffText, 14, startY);

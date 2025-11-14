@@ -129,6 +129,95 @@ td:first-child { text-align: left; padding-left: 8px; }
 
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- html2canvas (needed to render the table exactly) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <script>
+    // Render header + date + table + bottom-section to a single-page PDF.
+    async function downloadPDF() {
+      try {
+        const { jsPDF } = window.jspdf;
+        if (!window.html2canvas) throw new Error("html2canvas not loaded");
+
+        // Clone parts we want to print
+        const header = document.querySelector('h1')?.cloneNode(true);
+        const dateLabel = document.querySelector('label')?.cloneNode(true);
+        const table = document.querySelector('#stockTable')?.cloneNode(true);
+        const bottom = document.querySelector('.bottom-section')?.cloneNode(true);
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.left = '-9999px';
+        wrapper.style.top = '0';
+        wrapper.style.background = '#ffffff';
+        wrapper.style.padding = '12px';
+        wrapper.style.width = Math.min(document.body.scrollWidth, 1100) + 'px';
+        wrapper.style.boxSizing = 'border-box';
+        wrapper.style.color = '#000';
+
+        [header, dateLabel, table, bottom].forEach(n => { if (n) wrapper.appendChild(n); });
+
+        // Copy current input values & checked state into the clone so html2canvas renders them
+        document.querySelectorAll('input[id]').forEach(orig => {
+          try {
+            const id = orig.id;
+            const clone = wrapper.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(id) : id));
+            if (!clone) return;
+            if (orig.type === 'checkbox' || orig.type === 'radio') clone.checked = orig.checked;
+            else {
+              clone.value = orig.value;
+              clone.defaultValue = orig.value;
+            }
+            clone.readOnly = true;
+            clone.style.pointerEvents = 'none';
+          } catch (e) {
+            console.warn('copy input failed for', orig.id, e);
+          }
+        });
+
+        document.body.appendChild(wrapper);
+
+        // Render wrapper to canvas at high resolution
+        const canvas = await html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' });
+
+        // cleanup cloned DOM
+        document.body.removeChild(wrapper);
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+
+        // margins (mm)
+        const margin = 8;
+        const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
+        const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
+
+        // get image properties and compute image size in PDF units while preserving aspect ratio
+        const imgProps = pdf.getImageProperties(imgData);
+        let imgWidth = pageWidth;
+        let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+        // If image is taller than page area, scale it down to fit single page
+        if (imgHeight > pageHeight) {
+          const scale = pageHeight / imgHeight;
+          imgWidth = imgWidth * scale;
+          imgHeight = imgHeight * scale;
+        }
+
+        // center horizontally
+        const x = (pdf.internal.pageSize.getWidth() - imgWidth) / 2;
+        const y = margin;
+
+        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+
+        const date = document.getElementById('date')?.value || '(No Date)';
+        pdf.save('daily_stock_' + date + '.pdf');
+      } catch (err) {
+        alert('PDF export failed: ' + (err && err.message ? err.message : err));
+        console.error(err);
+      }
+    }
+  </script>
+
   <script>
     // Categories + items
     const categories = {
@@ -243,117 +332,6 @@ td:first-child { text-align: left; padding-left: 8px; }
         tbody.innerHTML += rowHTML;
       });
     });
-
-    // PDF Export
-    async function downloadPDF() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-      const date = document.getElementById("date").value || "(No Date)";
-
-      doc.setFontSize(16);
-      doc.text("Daily Stock Update", 14, 20);
-      doc.setFontSize(12);
-      doc.text("Date: " + date, 14, 28);
-
-      let startY = 40;
-
-      Object.keys(categories).forEach(cat => {
-        doc.setFontSize(13);
-        doc.text(cat, 14, startY);
-        startY += 6;
-
-        categories[cat].forEach(item => {
-          let opening = "-", closing = "-";
-
-          // helper: safely get element value or checkbox state
-          const el = id => document.getElementById(id);
-          const val = id => {
-            const e = el(id);
-            if (!e) return "-";
-            if (e.type === "checkbox") return e.checked;
-            return e.value === "" ? "-" : e.value;
-          };
-
-          if (["Sloppy Joe", "Black Pepper", "White Pepper"].includes(item) ||
-              ["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil") {
-            opening = val(`open-${item}`);
-            closing = val(`close-${item}`);
-          } 
-          else if (item === "Smash Burger") {
-            const o = val(`openPcs-${item}`); opening = o === "-" ? "-" : o + " pcs";
-            const c = val(`closePcs-${item}`); closing = c === "-" ? "-" : c + " pcs";
-          }
-          else if (item === "Egg") {
-            const openCtn = val(`openCtn-${item}`), openPcs = val(`openPcs-${item}`);
-            const closeCtn = val(`closeCtn-${item}`), closePcs = val(`closePcs-${item}`);
-            opening = (openCtn === "-" ? "-" : openCtn) + " ctn / " + (openPcs === "-" ? "-" : openPcs) + " pcs";
-            closing = (closeCtn === "-" ? "-" : closeCtn) + " ctn / " + (closePcs === "-" ? "-" : closePcs) + " pcs";
-          }
-          else if (item === "Tomato Puree") {
-            const openCans = val(`openCans-${item}`), closeCans = val(`closeCans-${item}`);
-            opening = openCans === "-" ? "-" : openCans + " cans";
-            closing = closeCans === "-" ? "-" : closeCans + " cans";
-          }
-          else {
-            const openPkt = val(`openPkt-${item}`), openPcs = val(`openPcs-${item}`);
-            const closePkt = val(`closePkt-${item}`), closePcs = val(`closePcs-${item}`);
-            opening = (openPkt === "-" ? "-" : openPkt) + " pkt / " + (openPcs === "-" ? "-" : openPcs) + " pcs";
-            closing = (closePkt === "-" ? "-" : closePkt) + " pkt / " + (closePcs === "-" ? "-" : closePcs) + " pcs";
-          }
-
-          // status checkboxes - guard against missing elements
-          const beliEl = el(`beli-${item}`), bawakEl = el(`bawak-${item}`);
-          const beli = beliEl && beliEl.checked ? "Beli" : "";
-          const bawak = bawakEl && bawakEl.checked ? "Bawak" : "";
-          const status = [beli, bawak].filter(Boolean).join(", ") || "-";
-
-          doc.setFontSize(11);
-          doc.text(item, 14, startY);
-          doc.text(String(opening), 70, startY);
-          doc.text(String(closing), 120, startY);
-          doc.text(status, 170, startY);
-
-          startY += 6;
-          if (startY > 270) { doc.addPage(); startY = 20; }
-        });
-
-        startY += 6;
-      });
-
-      // Notes
-      doc.setFontSize(13);
-      doc.text("Notes:", 14, startY);
-      startY += 6;
-      ["note1", "note2", "note3"].forEach(id => {
-        const val = document.getElementById(id) ? document.getElementById(id).value || "" : "";
-        doc.text("• " + val, 20, startY);
-        startY += 6;
-      });
-
-      // Sales & Capital
-      startY += 6;
-      const salesEl = document.getElementById("dailySales"), capitalEl = document.getElementById("dailyCapital");
-      const sales = salesEl && salesEl.value ? salesEl.value : "-";
-      const capital = capitalEl && capitalEl.value ? capitalEl.value : "-";
-      doc.text("Daily Sales: RM " + sales, 14, startY);
-      doc.text("Daily Capital: RM " + capital, 110, startY);
-
-      // Staffs (who's on duty)
-      startY += 6;
-      const staffList = [];
-      for (let i = 1; i <= 4; i++) {
-        const s = document.getElementById("staff" + i);
-        if (s && s.checked) {
-          // show label text if present, else fallback to Staff i
-          const label = s.parentElement ? s.parentElement.textContent.trim() : null;
-          staffList.push(label || ("Staff " + i));
-        }
-      }
-      const staffText = staffList.length ? staffList.join(", ") : "-";
-      doc.text("Staffs: " + staffText, 14, startY);
-
-      doc.save("daily_stock_" + date + ".pdf");
-    }
 
     // Clear all
     function clearAll() {

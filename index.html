@@ -1,92 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Stock Update</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4CAF50">
   <style>
-    body { font-family: Arial, sans-serif; margin: 10px; }
-    h1 { text-align: center; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
-    input[type="number"], input[type="text"] { width: 70px; text-align: center; margin: 2px; }
-    button { margin: 10px 5px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; }
-    .category { background: #f0f0f0; font-weight: bold; text-align: left; }
-    td:first-child { text-align: left; padding-left: 8px; }
-    .notes { margin-top: 20px; text-align: left; }
-    .notes ul { list-style-type: disc; padding-left: 20px; }
-    .notes li { margin-bottom: 6px; }
-    .notes input { width: 80%; text-align: left; padding: 4px; }
-    .clear-btn{
-      margin: 10px 5px;
-      padding: 10px;
-      background: #f44336;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+body { font-family: Arial, sans-serif; margin: 10px; }
+h1 { text-align: center; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+input[type="number"], input[type="text"] { width: 70px; text-align: center; margin: 2px; }
+button { margin: 10px 5px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; }
+.category { background: #f0f0f0; font-weight: bold; text-align: left; }
+
+td:first-child { text-align: left; padding-left: 8px; }
+
+.notes { margin-top: 20px; text-align: left; }
+.notes ul { list-style-type: disc; padding-left: 20px; }
+.notes li { margin-bottom: 6px; }
+.notes input { width: 80%; text-align: left; padding: 4px; }
+
+.clear-btn{
+  margin: 10px 5px;
+  padding: 10px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Added styles to place Notes and Sales/Capital/Staffs side-by-side */
+.bottom-section {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+.bottom-left { flex: 1; min-width: 220px; }
+
+/* right area now split: left = sales/capital, right = staffs */
+.bottom-right {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: 420px;
+}
+.right-left { width: 240px; }
+.right-right { width: 160px; }
+
+.bottom-right .block {
+  margin-bottom: 12px;
+}
+.bottom-right .block label { display: block; font-weight: 600; margin-bottom: 6px; }
+
+/* Make the Daily Sales / Daily Capital inputs smaller again */
+.bottom-right .block input[type="number"],
+.bottom-right .block input[type="text"] {
+  width: 120px; /* smaller fixed width */
+  box-sizing: border-box;
+  padding: 6px;
+  text-align: center;
+}
+
+/* Staffs styling */
+.staffs-title { display:block; font-weight:600; margin-bottom:6px; }
+.staffs label { display:block; font-weight: normal; margin: 4px 0; }
   </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4CAF50">
 </head>
 <body>
 
   <h1>Daily Stock Update</h1>
   <label>Date: <input type="date" id="date"></label>
 
-  <!-- Wrap all main content -->
-  <div id="mainContent">
-    <table id="stockTable">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Opening</th>
-          <th>Closing</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  <table id="stockTable">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Opening</th>
+        <th>Closing</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <div class="bottom-section">
+  <div class="bottom-section">
+    <div class="bottom-left">
       <h3>Notes</h3>
       <div class="notes">
         <input type="text" id="note1" placeholder="• Note 1">
         <input type="text" id="note2" placeholder="• Note 2">
         <input type="text" id="note3" placeholder="• Note 3">
       </div>
+    </div>
 
-      <h3>Daily Sales</h3>
-      <div class="sales">
-        <input type="number" id="dailySales" placeholder="Enter daily sales (RM)">
+    <div class="bottom-right">
+      <div class="right-left">
+        <div class="block">
+          <label for="dailySales">Daily Sales</label>
+          <input type="number" id="dailySales" placeholder="Enter daily sales (RM)">
+        </div>
+
+        <div class="block">
+          <label for="dailyCapital">Daily Capital</label>
+          <input type="number" id="dailyCapital" placeholder="Enter daily capital (RM)">
+        </div>
+      </div>
+
+      <div class="right-right">
+        <label class="staffs-title">Staffs</label>
+        <div class="staffs">
+          <label><input type="checkbox" id="staff1"> Ain</label>
+          <label><input type="checkbox" id="staff2"> Achik</label>
+          <label><input type="checkbox" id="staff3"> Adik</label>
+          <label><input type="checkbox" id="staff4"> Awin</label>
+        </div>
       </div>
     </div>
   </div>
-  <!-- End mainContent -->
 
   <button onclick="downloadPDF()">⬇ Download PDF</button>
   <button class="clear-btn" onclick="clearAll()">🗑 Clear All</button>
   <button onclick="saveData()">💾 Save</button>
 
-  <!-- libs -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
   <script>
     // Categories + items
     const categories = {
-      "Patty": ["Daging","Ayam", "Kambing", "Sloppy Joe", "Smash Burger", "Crispy Chicken","Ikan"],
+      "Patty": ["Daging","Ayam", "Kambing", "Sloppy Joe", "Smash Burger", "Crispy Chicken"],
       "Oblong": ["Daging","Ayam", "Kambing"],
       "Bread / Burger / Wrap": ["Bun", "Wrap","Oblong"],
       "Sauces & Spices": [
         "Chili Sauce", "Mayonnaise", "Special Sauce", "Cheese sauce",
-        "Paprika Powder", "Curry Powder", "Garlic Powder","Onion Powder", "Cayenne", "Worcestershire",
+        "Paprika Powder", "Curry Powder", "Garlic Powder", "Cayenne", "Worcestershire",
         "Black Pepper", "White Pepper", "Tomato Puree"
       ],
       "Cheese": ["Cheese Slice", "Cream Cheese"],
       "Sayur": ["Onion", "Cucumber", "Salad"],
-      "Others": ["Paper Wrapping", "Fries", "Egg","Margarine"]
+      "Others": ["Paper Wrapping", "Fries", "Egg", "Oil"] // added "Oil"
     };
 
     const tbody = document.querySelector("#stockTable tbody");
@@ -98,7 +154,7 @@
         let rowHTML = "";
 
         // Special cases
-        if (item === "Sloppy Joe" || item === "Black Pepper" || item === "White Pepper" || item === "Margarine") {
+        if (item === "Sloppy Joe" || item === "Black Pepper" || item === "White Pepper") {
           rowHTML = `
             <tr>
               <td>${item}</td>
@@ -152,8 +208,8 @@
               </td>
             </tr>`;
         }
-        else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat)) {
-          // Free text for sauces, spices, cheese, sayur
+        else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil") {
+          // Free text for sauces, spices, cheese, sayur and Oil
           rowHTML = `
             <tr>
               <td>${item}</td>
@@ -188,88 +244,109 @@
       });
     });
 
-    // PDF Export (adds date text + preserves checkmarks)
-  async function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const mainContent = document.getElementById("mainContent");
+    // PDF Export
+    async function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const date = document.getElementById("date").value || "(No Date)";
 
-  // Date for header + filename
-  let selectedDate = document.getElementById("date")?.value;
-  if (!selectedDate) selectedDate = new Date().toISOString().split("T")[0];
-  const filename = `Stock-${selectedDate}.pdf`;
+      doc.setFontSize(16);
+      doc.text("Daily Stock Update", 14, 20);
+      doc.setFontSize(12);
+      doc.text("Date: " + date, 14, 28);
 
-  // Swap real checkboxes with symbols so html2canvas captures them
-  const swaps = [];
-  mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
-    swaps.push({ element: cb });
-    const span = document.createElement("span");
-    span.textContent = cb.checked ? "☑" : "☐";
-    span.style.marginLeft = "4px";
-    cb.style.display = "none";
-    cb.parentNode.insertBefore(span, cb.nextSibling);
-  });
+      let startY = 40;
 
-  // ✅ Temporarily widen + shrink font for clean PDF layout
-  const originalWidth = mainContent.style.width;
-  const originalMaxWidth = mainContent.style.maxWidth;
-  const originalFontSize = mainContent.style.fontSize;
-  const originalLineHeight = mainContent.style.lineHeight;
+      Object.keys(categories).forEach(cat => {
+        doc.setFontSize(13);
+        doc.text(cat, 14, startY);
+        startY += 6;
 
-  mainContent.style.width = "1000px";
-  mainContent.style.maxWidth = "1000px";
-  mainContent.style.fontSize = "12px";     // shrink slightly
-  mainContent.style.lineHeight = "1.2";    // tighter spacing
+        categories[cat].forEach(item => {
+          let opening = "", closing = "";
 
-  const canvas = await html2canvas(mainContent, { scale: 2, useCORS: true });
+          if (["Sloppy Joe", "Black Pepper", "White Pepper"].includes(item) ||
+              ["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil") {
+            opening = document.getElementById(`open-${item}`).value || "-";
+            closing = document.getElementById(`close-${item}`).value || "-";
+          } 
+          else if (item === "Smash Burger") {
+            opening = (document.getElementById(`openPcs-${item}`).value || "-") + " pcs";
+            closing = (document.getElementById(`closePcs-${item}`).value || "-") + " pcs";
+          }
+          else if (item === "Egg") {
+            const openCtn = document.getElementById(`openCtn-${item}`).value || "-";
+            const openPcs = document.getElementById(`openPcs-${item}`).value || "-";
+            const closeCtn = document.getElementById(`closeCtn-${item}`).value || "-";
+            const closePcs = document.getElementById(`closePcs-${item}`).value || "-";
+            opening = openCtn + " ctn / " + openPcs + " pcs";
+            closing = closeCtn + " ctn / " + closePcs + " pcs";
+          }
+          else if (item === "Tomato Puree") {
+            const openCans = document.getElementById(`openCans-${item}`).value || "-";
+            const closeCans = document.getElementById(`closeCans-${item}`).value || "-";
+            opening = openCans + " cans";
+            closing = closeCans + " cans";
+          }
+          else {
+            const openPkt = document.getElementById(`openPkt-${item}`).value || "-";
+            const openPcs = document.getElementById(`openPcs-${item}`).value || "-";
+            const closePkt = document.getElementById(`closePkt-${item}`).value || "-";
+            const closePcs = document.getElementById(`closePcs-${item}`).value || "-";
+            opening = openPkt + " pkt / " + openPcs + " pcs";
+            closing = closePkt + " pkt / " + closePcs + " pcs";
+          }
 
-  // Restore styles
-  mainContent.style.width = originalWidth;
-  mainContent.style.maxWidth = originalMaxWidth;
-  mainContent.style.fontSize = originalFontSize;
-  mainContent.style.lineHeight = originalLineHeight;
+          const beli = document.getElementById(`beli-${item}`).checked ? "Beli" : "";
+          const bawak = document.getElementById(`bawak-${item}`).checked ? "Bawak" : "";
+          const status = [beli, bawak].filter(Boolean).join(", ") || "-";
 
-  // Restore real checkboxes
-  swaps.forEach(s => {
-    s.element.style.display = "";
-    const next = s.element.nextSibling;
-    if (next && next.nodeType === 1 && /[☑☐]/.test(next.textContent || "")) next.remove();
-  });
+          doc.setFontSize(11);
+          doc.text(item, 14, startY);
+          doc.text(opening, 70, startY);
+          doc.text(closing, 120, startY);
+          doc.text(status, 170, startY);
 
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDF("p", "mm", "a4");
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+          startY += 6;
+          if (startY > 270) { doc.addPage(); startY = 20; }
+        });
 
-  // 📏 Define margins
-  const marginLeft = 15;   // left padding
-  const marginRight = 15;  // right padding
-  const marginTop = 12;    // below header
-  const marginBottom = 12; // bottom padding
-  const usableWidth = pageWidth - marginLeft - marginRight;
-  const usableHeight = pageHeight - marginTop - marginBottom;
+        startY += 6;
+      });
 
-  // Fit content into usable area
-  const imgWidth = usableWidth;
-  const imgHeight = (canvas.height * usableWidth) / canvas.width;
+      // Notes
+      doc.setFontSize(13);
+      doc.text("Notes:", 14, startY);
+      startY += 6;
+      ["note1", "note2", "note3"].forEach(id => {
+        const val = document.getElementById(id).value || "";
+        doc.text("• " + val, 20, startY);
+        startY += 6;
+      });
 
-  const scaleFactor = usableHeight / imgHeight;
-  const finalHeight = imgHeight * scaleFactor;
+      // Sales & Capital
+      startY += 6;
+      const sales = document.getElementById("dailySales").value || "-";
+      const capital = document.getElementById("dailyCapital").value || "-";
+      doc.text("Daily Sales: RM " + sales, 14, startY);
+      doc.text("Daily Capital: RM " + capital, 110, startY);
 
-  // Add date header
-  pdf.setFontSize(12);
-  pdf.text(`Date: ${selectedDate}`, marginLeft, 8);
+      // Staffs (who's on duty)
+      startY += 6;
+      const staffList = [];
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById("staff" + i);
+        if (el && el.checked) staffList.push("Staff " + i);
+      }
+      const staffText = staffList.length ? staffList.join(", ") : "-";
+      doc.text("Staffs: " + staffText, 14, startY);
 
-  // Draw resized image centered within margins
-  pdf.addImage(imgData, "PNG", marginLeft, marginTop, usableWidth, finalHeight);
-
-  pdf.save(filename);
-}
-
-
+      doc.save("daily_stock_" + date + ".pdf");
+    }
 
     // Clear all
     function clearAll() {
-      const password = prompt("Enter password to clear all (Asree's Only):");
+      const password = prompt("Enter password to clear all:");
       if (password === "123") {
         document.querySelectorAll("input[type='number'], input[type='text']").forEach(input => input.value = "");
         document.querySelectorAll("input[type='checkbox']").forEach(chk => chk.checked = false);
@@ -306,28 +383,12 @@
     };
   </script>
 
-  <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("service-worker.js")
-        .then(() => console.log("Service Worker registered"));
-    }
-  </script>
-  
-  <script>
-  window.addEventListener("beforeunload", function (e) {
-    e.preventDefault();
-    e.returnValue = "Are you sure you want to refresh or leave? Unsaved data will be lost.";
-  });
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("Service Worker registered"));
+  }
 </script>
-  
+
 </body>
 </html>
-
-
-
-
-
-
-
-
-

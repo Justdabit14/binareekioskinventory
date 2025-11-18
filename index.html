@@ -133,7 +133,7 @@ td:first-child { text-align: left; padding-left: 8px; }
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
-    // Render header + date + table + bottom-section to a single-page PDF.
+    // Replace existing downloadPDF with this — it scales the rendered canvas to fill the A4 page (keeping margins)
     async function downloadPDF() {
       try {
         const { jsPDF } = window.jspdf;
@@ -151,13 +151,14 @@ td:first-child { text-align: left; padding-left: 8px; }
         wrapper.style.top = '0';
         wrapper.style.background = '#ffffff';
         wrapper.style.padding = '12px';
-        wrapper.style.width = Math.min(document.body.scrollWidth, 1100) + 'px';
+        // make wrapper wide so table layout stays intact
+        wrapper.style.width = Math.min(document.body.scrollWidth, 1400) + 'px';
         wrapper.style.boxSizing = 'border-box';
         wrapper.style.color = '#000';
 
         [header, dateLabel, table, bottom].forEach(n => { if (n) wrapper.appendChild(n); });
 
-        // Copy current input values & checked state into the clone so html2canvas renders them
+        // copy current input values & checked state into the clone
         document.querySelectorAll('input[id]').forEach(orig => {
           try {
             const id = orig.id;
@@ -168,6 +169,7 @@ td:first-child { text-align: left; padding-left: 8px; }
               clone.value = orig.value;
               clone.defaultValue = orig.value;
             }
+            // keep inputs visible but non-interactive
             clone.readOnly = true;
             clone.style.pointerEvents = 'none';
           } catch (e) {
@@ -177,7 +179,7 @@ td:first-child { text-align: left; padding-left: 8px; }
 
         document.body.appendChild(wrapper);
 
-        // Render wrapper to canvas at high resolution
+        // render wrapper to canvas (high quality)
         const canvas = await html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' });
 
         // cleanup cloned DOM
@@ -186,26 +188,25 @@ td:first-child { text-align: left; padding-left: 8px; }
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
 
-        // margins (mm)
+        // convert canvas pixels to mm (assuming 96dpi): 1 px = 25.4/96 mm
+        const pxToMm = 25.4 / 96;
+        const canvasWidthMm = canvas.width * pxToMm;
+        const canvasHeightMm = canvas.height * pxToMm;
+
+        // page inner size (mm) leaving small margin
         const margin = 8;
         const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
         const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
 
-        // get image properties and compute image size in PDF units while preserving aspect ratio
-        const imgProps = pdf.getImageProperties(imgData);
-        let imgWidth = pageWidth;
-        let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+        // scale to fit page (preserve aspect ratio) — will maximize usage of page area
+        const scale = Math.min(pageWidth / canvasWidthMm, pageHeight / canvasHeightMm, 1);
 
-        // If image is taller than page area, scale it down to fit single page
-        if (imgHeight > pageHeight) {
-          const scale = pageHeight / imgHeight;
-          imgWidth = imgWidth * scale;
-          imgHeight = imgHeight * scale;
-        }
+        const imgWidth = canvasWidthMm * scale;
+        const imgHeight = canvasHeightMm * scale;
 
-        // center horizontally
+        // center image on page
         const x = (pdf.internal.pageSize.getWidth() - imgWidth) / 2;
-        const y = margin;
+        const y = (pdf.internal.pageSize.getHeight() - imgHeight) / 2;
 
         pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
 
@@ -221,17 +222,17 @@ td:first-child { text-align: left; padding-left: 8px; }
   <script>
     // Categories + items
     const categories = {
-      "Patty": ["Daging","Ayam", "Kambing", "Sloppy Joe", "Smash Burger", "Crispy Chicken"],
+      "Patty": ["Daging","Ayam", "Ikan", "Kambing", "Sloppy Joe", "Smash Burger", "Crispy Chicken"],
       "Oblong": ["Daging","Ayam", "Kambing"],
       "Bread / Burger / Wrap": ["Bun", "Wrap","Oblong"],
       "Sauces & Spices": [
         "Chili Sauce", "Mayonnaise", "Special Sauce", "Cheese sauce",
-        "Paprika Powder", "Curry Powder", "Garlic Powder", "Cayenne", "Worcestershire",
+        "Paprika Powder", "Curry Powder", "Garlic Powder", "Onion Powder", "Cayenne", "Worcestershire",
         "Black Pepper", "White Pepper", "Tomato Puree"
       ],
       "Cheese": ["Cheese Slice", "Cream Cheese"],
       "Sayur": ["Onion", "Cucumber", "Salad"],
-      "Others": ["Paper Wrapping", "Fries", "Egg", "Oil"] // added "Oil"
+      "Others": ["Paper Wrapping", "Fries", "Egg", "Oil", "Margarine"]  // added "Margarine"
     };
 
     const tbody = document.querySelector("#stockTable tbody");
@@ -297,8 +298,8 @@ td:first-child { text-align: left; padding-left: 8px; }
               </td>
             </tr>`;
         }
-        else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil") {
-          // Free text for sauces, spices, cheese, sayur and Oil
+        else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil" || item === "Margarine") {
+          
           rowHTML = `
             <tr>
               <td>${item}</td>

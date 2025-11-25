@@ -1,431 +1,413 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Stock Update</title>
-  <style>
-body { font-family: Arial, sans-serif; margin: 10px; }
-h1 { text-align: center; }
-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
-input[type="number"], input[type="text"] { width: 70px; text-align: center; margin: 2px; }
-button { margin: 10px 5px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; }
-.category { background: #f0f0f0; font-weight: bold; text-align: left; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Stock Update</title>
+    <style>
+        /* Base Styles */
+        body { font-family: Arial, sans-serif; margin: 10px; }
+        h1 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        
+        /* Table and Cell Styling */
+        th, td { 
+            border: 1px solid #ccc; 
+            padding: 3px 4px; /* Slightly reduced padding for compactness */
+            text-align: center; 
+        }
 
-td:first-child { text-align: left; padding-left: 8px; }
+        /* Input Styling: Standard size */
+        input[type="number"], 
+        input[type="text"] { 
+            width: 45px; /* Slightly larger width for standard look */
+            text-align: center; 
+            margin: 1px; 
+            padding: 2px;
+            border: 1px solid #aaa;
+            box-sizing: border-box; 
+        }
+        
+        /* Unit Labels: Ensure standard text flow */
+        .unit-label {
+            font-size: 0.9em;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
 
-.notes { margin-top: 20px; text-align: left; }
-.notes ul { list-style-type: disc; padding-left: 20px; }
-.notes li { margin-bottom: 6px; }
-.notes input { width: 80%; text-align: left; padding: 4px; }
+        /* Status Styling */
+        .status-cell {
+            white-space: nowrap;
+        }
+        .status-cell label {
+            display: inline-block;
+            margin: 0 2px; 
+            font-size: 0.9em;
+        }
+        .status-cell input[type="checkbox"] {
+            margin-right: 2px;
+        }
 
-.clear-btn{
-  margin: 10px 5px;
-  padding: 10px;
-  background: #f44336;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
+        /* Other element styles */
+        button { margin: 10px 5px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .category { background: #f0f0f0; font-weight: bold; text-align: left; }
+        td:first-child { text-align: left; padding-left: 8px; }
 
-/* Added styles to place Notes and Sales/Capital/Staffs side-by-side */
-.bottom-section {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-  margin-top: 12px;
-}
-.bottom-left { flex: 1; min-width: 220px; }
+        .notes { margin-top: 20px; text-align: left; }
+        .notes input { 
+            width: 90%; 
+            text-align: left; 
+            padding: 4px; 
+            margin-bottom: 4px; 
+        }
 
-/* right area now split: left = sales/capital, right = staffs */
-.bottom-right {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  width: 420px;
-}
-.right-left { width: 240px; }
-.right-right { width: 160px; }
+        .clear-btn{
+            margin: 10px 5px;
+            padding: 10px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
 
-.bottom-right .block {
-  margin-bottom: 12px;
-}
-.bottom-right .block label { display: block; font-weight: 600; margin-bottom: 6px; }
+        /* Bottom section layout (Notes, Sales, Staffs) */
+        .bottom-section {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            margin-top: 12px;
+        }
+        .bottom-left { flex: 1; min-width: 220px; }
+        .bottom-right {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            width: 420px;
+        }
+        .right-left { width: 240px; }
+        .right-right { width: 160px; }
+        .bottom-right .block { margin-bottom: 12px; }
+        .bottom-right .block label { display: block; font-weight: 600; margin-bottom: 6px; }
+        .bottom-right .block input[type="number"],
+        .bottom-right .block input[type="text"] {
+            width: 100px; 
+            box-sizing: border-box;
+            padding: 6px;
+            text-align: center;
+        }
+        .staffs-title { display:block; font-weight:600; margin-bottom:6px; }
+        .staffs label { display:block; font-weight: normal; margin: 4px 0; }
+    </style>
 
-/* Make the Daily Sales / Daily Capital inputs smaller again */
-.bottom-right .block input[type="number"],
-.bottom-right .block input[type="text"] {
-  width: 120px; /* smaller fixed width */
-  box-sizing: border-box;
-  padding: 6px;
-  text-align: center;
-}
-
-/* Staffs styling */
-.staffs-title { display:block; font-weight:600; margin-bottom:6px; }
-.staffs label { display:block; font-weight: normal; margin: 4px 0; }
-  </style>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4CAF50">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
 </head>
 <body>
 
-  <h1>Daily Stock Update</h1>
-  <label>Date: <input type="date" id="date"></label>
+    <h1>Daily Stock Update</h1>
+    <label>Date: <input type="date" id="date"></label>
+    
+    <div id="mainContent">
+        <table id="stockTable">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Opening</th>
+                    <th>Closing</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
 
-  <table id="stockTable">
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th>Opening</th>
-        <th>Closing</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+        <div class="bottom-section">
+            <div class="bottom-left">
+                <h3>Notes</h3>
+                <div class="notes">
+                    <input type="text" id="note1" placeholder="• Note 1">
+                    <input type="text" id="note2" placeholder="• Note 2">
+                    <input type="text" id="note3" placeholder="• Note 3">
+                </div>
+            </div>
 
-  <div class="bottom-section">
-    <div class="bottom-left">
-      <h3>Notes</h3>
-      <div class="notes">
-        <input type="text" id="note1" placeholder="• Note 1">
-        <input type="text" id="note2" placeholder="• Note 2">
-        <input type="text" id="note3" placeholder="• Note 3">
-      </div>
+            <div class="bottom-right">
+                <div class="right-left">
+                    <div class="block">
+                        <label for="dailySales">Daily Sales</label>
+                        <input type="number" id="dailySales" placeholder="Enter daily sales (RM)">
+                    </div>
+
+                    <div class="block">
+                        <label for="dailyCapital">Daily Capital</label>
+                        <input type="number" id="dailyCapital" placeholder="Enter daily capital (RM)">
+                    </div>
+                </div>
+
+                <div class="right-right">
+                    <label class="staffs-title">Staffs</label>
+                    <div class="staffs">
+                        <label><input type="checkbox" id="staff1"> Ain</label>
+                        <label><input type="checkbox" id="staff2"> Achik</label>
+                        <label><input type="checkbox" id="staff3"> Adik</label>
+                        <label><input type="checkbox" id="staff4"> Awin</label>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+    <button onclick="downloadPDF()">⬇ Download PDF</button>
+    <button class="clear-btn" onclick="clearAll()">🗑 Clear All</button>
+    <button onclick="saveData()">💾 Save</button>
 
-    <div class="bottom-right">
-      <div class="right-left">
-        <div class="block">
-          <label for="dailySales">Daily Sales</label>
-          <input type="number" id="dailySales" placeholder="Enter daily sales (RM)">
-        </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-        <div class="block">
-          <label for="dailyCapital">Daily Capital</label>
-          <input type="number" id="dailyCapital" placeholder="Enter daily capital (RM)">
-        </div>
-      </div>
+    <script>
+    async function downloadPDF() {
+        try {
+            const { jsPDF } = window.jspdf;
+            const mainContent = document.getElementById("mainContent");
+            if (!mainContent || mainContent.children.length === 0) {
+                alert("Error: Content to convert to PDF is missing or empty.");
+                return;
+            }
 
-      <div class="right-right">
-        <label class="staffs-title">Staffs</label>
-        <div class="staffs">
-          <label><input type="checkbox" id="staff1"> Ain</label>
-          <label><input type="checkbox" id="staff2"> Achik</label>
-          <label><input type="checkbox" id="staff3"> Adik</label>
-          <label><input type="checkbox" id="staff4"> Awin</label>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div id="mainContent"></div>
-  <button onclick="downloadPDF()">⬇ Download PDF</button>
-  <button class="clear-btn" onclick="clearAll()">🗑 Clear All</button>
-  <button onclick="saveData()">💾 Save</button>
+            // Get the date input
+            let selectedDate = document.getElementById("date")?.value;
+            if (!selectedDate) selectedDate = new Date().toISOString().split("T")[0];
+            const filename = `Stock-${selectedDate}.pdf`;
 
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- html2canvas (needed to render the table exactly) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+            // --- Replace checkboxes with symbols so html2canvas captures them ---
+            const swaps = [];
+            mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
+                const span = document.createElement("span");
+                span.textContent = cb.checked ? "☑" : "☐";
+                span.style.marginLeft = "4px";
+                span.style.fontSize = "10px"; // Make symbol visible
+                cb.style.display = "none";
+                
+                // Store original element and insert point
+                swaps.push({ element: cb, parent: cb.parentNode, nextSibling: cb.nextSibling }); 
+                cb.parentNode.insertBefore(span, cb.nextSibling);
+            });
 
-  <script>
-  async function downloadPDF() {
-  try {
-    const { jsPDF } = window.jspdf;
-    if (!window.html2canvas) throw new Error("html2canvas not loaded");
+            // --- Render page ---
+            const canvas = await html2canvas(mainContent, {
+                scale: 2,
+                useCORS: true,
+                windowWidth: mainContent.scrollWidth
+            });
 
-    // PDF / page setup
-    const pdf = new jsPDF("p", "mm", "a4");
-    const margin = 8; // mm
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const pageInnerW = pageW - margin * 2;
-    const pageInnerH = pageH - margin * 2;
+            // Restore checkboxes after render and remove the symbols
+            swaps.forEach(s => {
+                s.element.style.display = ""; // Show checkbox
+                const next = s.element.nextSibling;
+                // Check if the next sibling is the temporary span and remove it
+                if (next && next.tagName === 'SPAN' && next.textContent?.match(/[☑☐]/)) {
+                    next.remove();
+                }
+            });
 
-    // Convert px <-> mm helpers
-    const pxToMm = 25.4 / 96;
-    // Fixed render scale to avoid extreme upsizing on high-DPI devices
-    const renderScale = 2;
-    const wrapperCssWidthPx = Math.round(pageInnerW / (pxToMm * renderScale));
+            // Convert canvas to image
+            const imgData = canvas.toDataURL("image/png");
+            const pdf = new jsPDF("p", "mm", "a4");
 
-    // Copy form fields values into cloned DOM so html2canvas renders current values
-    const copyInputsFromLive = cloneRoot => {
-      cloneRoot.querySelectorAll("input").forEach(cloneInp => {
-        const live = document.getElementById(cloneInp.id);
-        if (!live) return;
-        if (cloneInp.type === "checkbox") {
-          const mark = document.createElement("span");
-          mark.textContent = live.checked ? "☑" : "☐";
-          mark.style.marginLeft = "6px";
-          cloneInp.style.display = "none";
-          cloneInp.parentNode && cloneInp.parentNode.insertBefore(mark, cloneInp.nextSibling);
-        } else {
-          cloneInp.value = live.value || "";
-          cloneInp.readOnly = true;
-          cloneInp.style.pointerEvents = "none";
+            // A4 dimensions
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+
+            // Calculate usable area
+            const topMargin = 10;
+            const bottomMargin = 10;
+            const usableWidth = pageWidth - 20; // 10mm margin on left and right
+            const usableHeight = pageHeight - topMargin - bottomMargin;
+
+            // Fit image inside usable area while keeping ratio
+            const ratio = Math.min(usableWidth / canvas.width, usableHeight / canvas.height);
+
+            const imgWidth = canvas.width * ratio;
+            const imgHeight = canvas.height * ratio;
+
+            // Center horizontally
+            const imgX = (pageWidth - imgWidth) / 2;
+
+            // --- Print date at top ---
+            pdf.setFontSize(12);
+            pdf.text(`Daily Stock Update - Date: ${selectedDate}`, 10, 8);
+
+            // --- Insert table image ---
+            pdf.addImage(imgData, "PNG", imgX, topMargin, imgWidth, imgHeight);
+
+            // --- Save file ---
+            pdf.save(filename);
+        } catch (error) {
+            console.error("PDF generation failed:", error);
+            alert("Error generating PDF. Please check the console for details.");
         }
-      });
-    };
-
-    // Build a temporary wrapper sized so canvas will match printable width
-    const wrap = document.createElement("div");
-    wrap.style.position = "fixed";
-    wrap.style.left = "-9999px";
-    wrap.style.top = "0";
-    wrap.style.background = "#fff";
-    wrap.style.width = wrapperCssWidthPx + "px";
-    wrap.style.boxSizing = "border-box";
-    wrap.style.padding = "0 4px"; // keep a tiny gutter for nicer edges
-    wrap.style.fontFamily = "Arial, sans-serif";
-    wrap.style.color = "#000";
-
-    // copy header & date
-    const header = document.querySelector("h1")?.cloneNode(true);
-    if (header) {
-      header.style.margin = "0 0 6px 0";
-      header.style.fontSize = "16px";
-      header.style.textAlign = "center";
-      wrap.appendChild(header);
     }
-    const dateLabel = document.querySelector("label")?.cloneNode(true);
-    if (dateLabel) {
-      const origDate = document.getElementById("date");
-      const input = dateLabel.querySelector("input");
-      if (origDate && input) {
-        input.value = origDate.value || "";
-        input.readOnly = true;
-        input.style.pointerEvents = "none";
-      }
-      dateLabel.style.display = "block";
-      dateLabel.style.margin = "0 0 8px 0";
-      wrap.appendChild(dateLabel);
-    }
+    window.downloadPDF = downloadPDF; // Make function globally accessible
+    </script>
 
-    // clone table (with current values)
-    const table = document.getElementById("stockTable")?.cloneNode(true);
-    if (!table) throw new Error("stockTable not found");
-    table.style.width = "100%";
-    copyInputsFromLive(table);
-    wrap.appendChild(table);
+    <script>
+        // Categories + items
+        const categories = {
+            "Patty": ["Daging","Ayam", "Ikan", "Kambing", "Sloppy Joe", "Smash Burger", "Crispy Chicken"],
+            "Oblong": ["Daging","Ayam", "Kambing"],
+            "Bread / Burger / Wrap": ["Bun", "Wrap","Oblong"],
+            "Sauces & Spices": [
+                "Chili Sauce", "Mayonnaise", "Special Sauce", "Cheese sauce",
+                "Paprika Powder", "Curry Powder", "Garlic Powder", "Onion Powder", "Cayenne", "Worcestershire",
+                "Black Pepper", "White Pepper", "Tomato Puree"
+            ],
+            "Cheese": ["Cheese Slice", "Cream Cheese"],
+            "Sayur": ["Onion", "Cucumber", "Salad"],
+            "Others": ["Paper Wrapping", "Fries", "Egg", "Oil", "Margarine"] 
+        };
 
-    // clone bottom section
-    const bottom = document.querySelector(".bottom-section")?.cloneNode(true);
-    if (bottom) {
-      copyInputsFromLive(bottom);
-      bottom.style.marginTop = "10px";
-      wrap.appendChild(bottom);
-    }
+        const tbody = document.querySelector("#stockTable tbody");
 
-    document.body.appendChild(wrap);
+        // Generate rows
+        Object.keys(categories).forEach(cat => {
+            tbody.innerHTML += `<tr class="category"><td colspan="4">${cat}</td></tr>`;
 
-    // render wrapper to canvas
-    const canvas = await html2canvas(wrap, { scale: renderScale, backgroundColor: "#fff", useCORS: true });
-    document.body.removeChild(wrap);
+            // helper to create safe id parts (remove spaces/special chars)
+            const safe = str => String(str).replace(/[^a-z0-9\-_]/gi, '_');
 
-    // canvas -> mm
-    const canvasWidthMm = canvas.width * pxToMm;
-    const canvasHeightMm = canvas.height * pxToMm;
+            categories[cat].forEach(item => {
+                const base = safe(cat) + '-' + safe(item);
+                let rowHTML = "";
 
-    // Fit width-first. Because renderScale and wrapperCssWidthPx are chosen to match pageInnerW,
-    // this should avoid extreme magnification while filling page width nicely.
-    const widthScale = pageInnerW / canvasWidthMm;
-    const imgWmm = pageInnerW;
-    const imgHmm = canvasHeightMm * widthScale;
-    const imgData = canvas.toDataURL("image/png");
-
-    // put the image on the PDF and paginate vertically when needed
-    pdf.addImage(imgData, "PNG", margin, margin, imgWmm, imgHmm);
-
-    if (imgHmm > pageInnerH) {
-      let remaining = imgHmm - pageInnerH;
-      let offset = pageInnerH;
-      while (remaining > 0) {
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", margin, margin - offset, imgWmm, imgHmm);
-        remaining -= pageInnerH;
-        offset += pageInnerH;
-      }
-    }
-
-    const selectedDate = document.getElementById("date")?.value || new Date().toISOString().split("T")[0];
-    pdf.save(`Stock-${selectedDate}.pdf`);
-  } catch (err) {
-    alert("PDF export failed: " + (err && err.message ? err.message : err));
-    console.error(err);
-  }
-}
-
-
-  </script>
-
-  <script>
-    // Categories + items
-    const categories = {
-      "Patty": ["Daging","Ayam", "Ikan", "Kambing", "Sloppy Joe", "Smash Burger", "Crispy Chicken"],
-      "Oblong": ["Daging","Ayam", "Kambing"],
-      "Bread / Burger / Wrap": ["Bun", "Wrap","Oblong"],
-      "Sauces & Spices": [
-        "Chili Sauce", "Mayonnaise", "Special Sauce", "Cheese sauce",
-        "Paprika Powder", "Curry Powder", "Garlic Powder", "Onion Powder", "Cayenne", "Worcestershire",
-        "Black Pepper", "White Pepper", "Tomato Puree"
-      ],
-      "Cheese": ["Cheese Slice", "Cream Cheese"],
-      "Sayur": ["Onion", "Cucumber", "Salad"],
-      "Others": ["Paper Wrapping", "Fries", "Egg", "Oil", "Margarine"]  // added "Margarine"
-    };
-
-    const tbody = document.querySelector("#stockTable tbody");
-
-    // Generate rows
-    Object.keys(categories).forEach(cat => {
-      tbody.innerHTML += `<tr class="category"><td colspan="4">${cat}</td></tr>`;
-
-      // helper to create safe id parts (remove spaces/special chars)
-      const safe = str => String(str).replace(/[^a-z0-9\-_]/gi, '_');
-
-      categories[cat].forEach(item => {
-        const base = safe(cat) + '-' + safe(item);
-        let rowHTML = "";
-
-        // Special cases
-        if (item === "Sloppy Joe" || item === "Black Pepper" || item === "White Pepper") {
-          rowHTML = `
-            <tr>
-              <td>${item}</td>
-              <td><input type="text" id="open-${base}" placeholder="Opening"></td>
-              <td><input type="text" id="close-${base}" placeholder="Closing"></td>
-              <td>
-                <label><input type="checkbox" id="beli-${base}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
-              </td>
-            </tr>`;
-        } 
-        else if (item === "Smash Burger") {
-          rowHTML = `
-            <tr>
-              <td>${item}</td>
-              <td><input type="number" id="openPcs-${base}" placeholder="Pcs"> pcs</td>
-              <td><input type="number" id="closePcs-${base}" placeholder="Pcs"> pcs</td>
-              <td>
-                <label><input type="checkbox" id="beli-${base}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
-              </td>
-            </tr>`;
-        }
-        else if (item === "Egg") {
-          rowHTML = `
-            <tr>
-              <td>${item}</td>
-              <td>
-                <input type="number" id="openCtn-${base}" placeholder="Ctn"> ctn
-                <input type="number" id="openPcs-${base}" placeholder="Pcs"> pcs
-              </td>
-              <td>
-                <input type="number" id="closeCtn-${base}" placeholder="Ctn"> ctn
-                <input type="number" id="closePcs-${base}" placeholder="Pcs"> pcs
-              </td>
-              <td>
-                <label><input type="checkbox" id="beli-${base}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
-              </td>
-            </tr>`;
-        }
-        else if (item === "Tomato Puree") {
-          rowHTML = `
-            <tr>
-              <td>${item}</td>
-              <td><input type="number" id="openCans-${base}" placeholder="Cans"> cans</td>
-              <td><input type="number" id="closeCans-${base}" placeholder="Cans"> cans</td>
-              <td>
-                <label><input type="checkbox" id="beli-${base}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
-              </td>
-            </tr>`;
-        }
-        else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil" || item === "Margarine") {
-          rowHTML = `
-            <tr>
-              <td>${item}</td>
-              <td><input type="text" id="open-${base}" placeholder="Opening"></td>
-              <td><input type="text" id="close-${base}" placeholder="Closing"></td>
-              <td>
-                <label><input type="checkbox" id="beli-${base}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
-              </td>
-            </tr>`;
-        } 
-        else {
-          // Default: pkt + pcs
-          rowHTML = `
-            <tr>
-              <td>${item}</td>
-              <td>
-                <input type="number" id="openPkt-${base}" placeholder="Pkt"> pkt
-                <input type="number" id="openPcs-${base}" placeholder="Pcs"> pcs
-              </td>
-              <td>
-                <input type="number" id="closePkt-${base}" placeholder="Pkt"> pkt
-                <input type="number" id="closePcs-${base}" placeholder="Pcs"> pcs
-              </td>
-              <td>
-                <label><input type="checkbox" id="beli-${base}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
-              </td>
-            </tr>`;
-        }
-        tbody.innerHTML += rowHTML;
-      });
-    });
-
-    // Clear all
-    function clearAll() {
-      const password = prompt("Enter password to clear all:");
-      if (password === "123") {
-        document.querySelectorAll("input[type='number'], input[type='text']").forEach(input => input.value = "");
-        document.querySelectorAll("input[type='checkbox']").forEach(chk => chk.checked = false);
-        localStorage.removeItem("stockData");
-        alert("All fields cleared!");
-      } else if (password !== null) {
-        alert("Incorrect password!");
-      }
-    }
-
-    // Save/load localStorage
-    function saveData() {
-      let data = {};
-      document.querySelectorAll("input").forEach(input => {
-        if (input.type === "checkbox") data[input.id] = input.checked;
-        else data[input.id] = input.value;
-      });
-      localStorage.setItem("stockData", JSON.stringify(data));
-      alert("Data saved!");
-    }
-
-    window.onload = () => {
-      let saved = localStorage.getItem("stockData");
-      if (saved) {
-        saved = JSON.parse(saved);
-        Object.keys(saved).forEach(id => {
-          let input = document.getElementById(id);
-          if (input) {
-            if (input.type === "checkbox") input.checked = saved[id];
-            else input.value = saved[id];
-          }
+                // Special cases for single text input
+                if (item === "Sloppy Joe" || item === "Black Pepper" || item === "White Pepper" || 
+                    ["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil" || item === "Margarine") {
+                    rowHTML = `
+                        <tr>
+                            <td>${item}</td>
+                            <td><input type="text" id="open-${base}" placeholder="Opening"></td>
+                            <td><input type="text" id="close-${base}" placeholder="Closing"></td>
+                            <td class="status-cell">
+                                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
+                            </td>
+                        </tr>`;
+                } 
+                // Special case for Smash Burger and Crispy Chicken (pcs only)
+                else if (item === "Smash Burger" || item === "Crispy Chicken") {
+                    rowHTML = `
+                        <tr>
+                            <td>${item}</td>
+                            <td><input type="number" id="openPcs-${base}" placeholder="Pcs"> <span class="unit-label">pcs</span></td>
+                            <td><input type="number" id="closePcs-${base}" placeholder="Pcs"> <span class="unit-label">pcs</span></td>
+                            <td class="status-cell">
+                                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
+                            </td>
+                        </tr>`;
+                }
+                // Special case for Egg (ctn + pcs)
+                else if (item === "Egg") {
+                    rowHTML = `
+                        <tr>
+                            <td>${item}</td>
+                            <td>
+                                <input type="number" id="openCtn-${base}" placeholder="Ctn"> <span class="unit-label">ctn</span>
+                                <input type="number" id="openPcs-${base}" placeholder="Pcs"> <span class="unit-label">pcs</span>
+                            </td>
+                            <td>
+                                <input type="number" id="closeCtn-${base}" placeholder="Ctn"> <span class="unit-label">ctn</span>
+                                <input type="number" id="closePcs-${base}" placeholder="Pcs"> <span class="unit-label">pcs</span>
+                            </td>
+                            <td class="status-cell">
+                                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
+                            </td>
+                        </tr>`;
+                }
+                // Special case for Tomato Puree (cans only)
+                else if (item === "Tomato Puree") {
+                    rowHTML = `
+                        <tr>
+                            <td>${item}</td>
+                            <td><input type="number" id="openCans-${base}" placeholder="Cans"> <span class="unit-label">cans</span></td>
+                            <td><input type="number" id="closeCans-${base}" placeholder="Cans"> <span class="unit-label">cans</span></td>
+                            <td class="status-cell">
+                                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
+                            </td>
+                        </tr>`;
+                }
+                else {
+                    // Default: pkt + pcs (Patty, Oblong, Bread, Fries, Paper Wrapping)
+                    rowHTML = `
+                        <tr>
+                            <td>${item}</td>
+                            <td>
+                                <input type="number" id="openPkt-${base}" placeholder="Pkt"> <span class="unit-label">pkt</span>
+                                <input type="number" id="openPcs-${base}" placeholder="Pcs"> <span class="unit-label">pcs</span>
+                            </td>
+                            <td>
+                                <input type="number" id="closePkt-${base}" placeholder="Pkt"> <span class="unit-label">pkt</span>
+                                <input type="number" id="closePcs-${base}" placeholder="Pcs"> <span class="unit-label">pcs</span>
+                            </td>
+                            <td class="status-cell">
+                                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
+                            </td>
+                        </tr>`;
+                }
+                tbody.innerHTML += rowHTML;
+            });
         });
-      }
-    };
-  </script>
 
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js")
-      .then(() => console.log("Service Worker registered"));
-  }
-</script>
+        // Clear all
+        function clearAll() {
+            const password = prompt("Enter password to clear all:");
+            if (password === "123") {
+                document.querySelectorAll("input[type='number'], input[type='text']").forEach(input => input.value = "");
+                document.querySelectorAll("input[type='checkbox']").forEach(chk => chk.checked = false);
+                localStorage.removeItem("stockData");
+                alert("All fields cleared!");
+            } else if (password !== null) {
+                alert("Incorrect password!");
+            }
+        }
+        window.clearAll = clearAll; 
+
+        // Save/load localStorage
+        function saveData() {
+            let data = {};
+            document.querySelectorAll("input").forEach(input => {
+                if (input.type === "checkbox") data[input.id] = input.checked;
+                else data[input.id] = input.value;
+            });
+            localStorage.setItem("stockData", JSON.stringify(data));
+            alert("Data saved!");
+        }
+        window.saveData = saveData; 
+
+        window.onload = () => {
+            let saved = localStorage.getItem("stockData");
+            if (saved) {
+                saved = JSON.parse(saved);
+                Object.keys(saved).forEach(id => {
+                    let input = document.getElementById(id);
+                    if (input) {
+                        if (input.type === "checkbox") input.checked = saved[id];
+                        else input.value = saved[id];
+                    }
+                });
+            }
+        };
+    </script>
+
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js")
+                .then(() => console.log("Service Worker registered"));
+        }
+    </script>
 
 </body>
 </html>

@@ -133,11 +133,24 @@ td:first-child { text-align: left; padding-left: 8px; }
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
-    // Replace existing downloadPDF with this — it scales the rendered canvas to fill the A4 page (keeping margins)
+    // Render header + date + table + bottom-section to a PDF that fills the whole A4 page.
     async function downloadPDF() {
       try {
         const { jsPDF } = window.jspdf;
         if (!window.html2canvas) throw new Error("html2canvas not loaded");
+
+        // Create pdf to compute page sizes before rendering
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const margin = 8; // mm
+        const pageInnerWidthMm = pdf.internal.pageSize.getWidth() - margin * 2;
+        const pageInnerHeightMm = pdf.internal.pageSize.getHeight() - margin * 2;
+
+        // mm per CSS px approx at 96 DPI
+        const pxToMm = 25.4 / 96;
+        const targetRenderScale = 2; // html2canvas scale (higher = sharper)
+
+        // Set wrapper CSS width so canvas -> exact page inner width (mm -> px)
+        const wrapperCssWidthPx = Math.ceil(pageInnerWidthMm / (targetRenderScale * pxToMm));
 
         // Clone parts we want to print
         const header = document.querySelector('h1')?.cloneNode(true);
@@ -151,14 +164,13 @@ td:first-child { text-align: left; padding-left: 8px; }
         wrapper.style.top = '0';
         wrapper.style.background = '#ffffff';
         wrapper.style.padding = '12px';
-        // make wrapper wide so table layout stays intact
-        wrapper.style.width = Math.min(document.body.scrollWidth, 1400) + 'px';
+        wrapper.style.width = wrapperCssWidthPx + 'px';
         wrapper.style.boxSizing = 'border-box';
         wrapper.style.color = '#000';
 
         [header, dateLabel, table, bottom].forEach(n => { if (n) wrapper.appendChild(n); });
 
-        // copy current input values & checked state into the clone
+        // Copy current input values & checked state into the clone
         document.querySelectorAll('input[id]').forEach(orig => {
           try {
             const id = orig.id;
@@ -169,7 +181,7 @@ td:first-child { text-align: left; padding-left: 8px; }
               clone.value = orig.value;
               clone.defaultValue = orig.value;
             }
-            // keep inputs visible but non-interactive
+            // make clone non-interactive
             clone.readOnly = true;
             clone.style.pointerEvents = 'none';
           } catch (e) {
@@ -179,36 +191,28 @@ td:first-child { text-align: left; padding-left: 8px; }
 
         document.body.appendChild(wrapper);
 
-        // render wrapper to canvas (high quality)
-        const canvas = await html2canvas(wrapper, { scale: 2, backgroundColor: '#ffffff' });
+        // Render wrapper to canvas
+        const canvas = await html2canvas(wrapper, { scale: targetRenderScale, backgroundColor: '#ffffff' });
 
-        // cleanup cloned DOM
+        // cleanup
         document.body.removeChild(wrapper);
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-
-        // convert canvas pixels to mm (assuming 96dpi): 1 px = 25.4/96 mm
-        const pxToMm = 25.4 / 96;
+        // Convert canvas px to mm
         const canvasWidthMm = canvas.width * pxToMm;
         const canvasHeightMm = canvas.height * pxToMm;
 
-        // page inner size (mm) leaving small margin
-        const margin = 8;
-        const pageWidth = pdf.internal.pageSize.getWidth() - margin * 2;
-        const pageHeight = pdf.internal.pageSize.getHeight() - margin * 2;
+        // Compute scale to fit inside page inner area while preserving aspect ratio
+        const fitScale = Math.min(pageInnerWidthMm / canvasWidthMm, pageInnerHeightMm / canvasHeightMm, 1);
 
-        // scale to fit page (preserve aspect ratio) — will maximize usage of page area
-        const scale = Math.min(pageWidth / canvasWidthMm, pageHeight / canvasHeightMm, 1);
+        const imgWidthMm = canvasWidthMm * fitScale;
+        const imgHeightMm = canvasHeightMm * fitScale;
 
-        const imgWidth = canvasWidthMm * scale;
-        const imgHeight = canvasHeightMm * scale;
+        // Center the image with margins
+        const x = (pdf.internal.pageSize.getWidth() - imgWidthMm) / 2;
+        const y = (pdf.internal.pageSize.getHeight() - imgHeightMm) / 2;
 
-        // center image on page
-        const x = (pdf.internal.pageSize.getWidth() - imgWidth) / 2;
-        const y = (pdf.internal.pageSize.getHeight() - imgHeight) / 2;
-
-        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', x, y, imgWidthMm, imgHeightMm);
 
         const date = document.getElementById('date')?.value || '(No Date)';
         pdf.save('daily_stock_' + date + '.pdf');

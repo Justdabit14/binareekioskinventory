@@ -133,39 +133,37 @@ td:first-child { text-align: left; padding-left: 8px; }
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
-    // Render header + date + table + bottom-section to a PDF that fills the whole A4 page.
     async function downloadPDF() {
       try {
         const { jsPDF } = window.jspdf;
         if (!window.html2canvas) throw new Error("html2canvas not loaded");
 
-        // PDF + page area (mm)
         const pdf = new jsPDF('p', 'mm', 'a4');
         const margin = 8; // mm
         const pageInnerW = pdf.internal.pageSize.getWidth() - margin * 2;
         const pageInnerH = pdf.internal.pageSize.getHeight() - margin * 2;
 
-        // px <-> mm conversion and html2canvas render scale
+        // mm per CSS px and scale (use devicePixelRatio to improve phone rendering)
         const pxToMm = 25.4 / 96;
-        const renderScale = 2; // increase for sharper output
+        const deviceScale = Math.max(2, Math.round((window.devicePixelRatio || 1) * 2));
+        const renderScale = deviceScale;
 
-        // wrapper CSS width (px) so the final canvas width in mm matches pageInnerW
+        // CSS px width so canvas width (cssPx * renderScale) becomes pageInnerW when converted to mm:
+        // wrapperCssWidthPx * renderScale * pxToMm === pageInnerW => wrapperCssWidthPx = pageInnerW / (pxToMm * renderScale)
         const wrapperCssWidthPx = Math.round(pageInnerW / (pxToMm * renderScale));
 
-        // split categories by count (keeps category groups intact)
+        // split categories by count (same logic you already have)
         const keys = Object.keys(categories);
         const mid = Math.ceil(keys.length / 2);
         const leftKeys = keys.slice(0, mid);
         const rightKeys = keys.slice(mid);
 
-        // helper to read current live values
         const val = id => {
           const el = document.getElementById(id);
           if (!el) return '';
           if (el.type === 'checkbox' || el.type === 'radio') return el.checked;
           return el.value || '';
         };
-
         const safe = s => String(s).replace(/[^a-z0-9\-_]/gi, '_');
 
         function buildTableForKeys(keysArr) {
@@ -173,7 +171,6 @@ td:first-child { text-align: left; padding-left: 8px; }
           table.style.width = '100%';
           table.style.borderCollapse = 'collapse';
           table.style.fontSize = '11px';
-          // header row
           table.innerHTML = `<thead>
             <tr>
               <th style="border:1px solid #ccc;padding:6px;text-align:center">Item</th>
@@ -185,7 +182,6 @@ td:first-child { text-align: left; padding-left: 8px; }
           const tb = document.createElement('tbody');
 
           keysArr.forEach(cat => {
-            // category header
             const catRow = document.createElement('tr');
             catRow.className = 'category';
             catRow.innerHTML = `<td colspan="4" style="text-align:left;padding:6px;background:#f0f0f0;font-weight:bold">${cat}</td>`;
@@ -194,8 +190,6 @@ td:first-child { text-align: left; padding-left: 8px; }
             categories[cat].forEach(item => {
               const b = `${safe(cat)}-${safe(item)}`;
               let inner = '';
-
-              // reuse same input shapes as UI but populate values from live inputs
               if (item === 'Egg') {
                 inner = `<td>${item}</td>
                   <td><input value="${val('openCtn-'+b) || ''}" readonly style="width:50px;text-align:center"> ctn <input value="${val('openPcs-'+b) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
@@ -233,39 +227,39 @@ td:first-child { text-align: left; padding-left: 8px; }
           return table;
         }
 
-        // Build printable wrapper that exactly equals the page-inner width (in px when scaled)
+        // Build printable wrapper sized for printed width (no horizontal padding)
         const finalWrap = document.createElement('div');
         finalWrap.style.position = 'fixed';
         finalWrap.style.left = '-9999px';
         finalWrap.style.top = '0';
         finalWrap.style.background = '#fff';
-        finalWrap.style.padding = '10px';
+        // keep only vertical padding to avoid reducing available width
+        finalWrap.style.padding = '8px 0';
         finalWrap.style.width = wrapperCssWidthPx + 'px';
         finalWrap.style.boxSizing = 'border-box';
         finalWrap.style.fontFamily = 'Arial, sans-serif';
         finalWrap.style.fontSize = '11px';
         finalWrap.style.color = '#000';
 
-        // header + date
+        // header + date (compact)
         const header = document.querySelector('h1')?.cloneNode(true);
-        if (header) {
-          header.style.fontSize = '16px';
-          header.style.textAlign = 'center';
-          finalWrap.appendChild(header);
-        }
+        if (header) { header.style.fontSize = '16px'; header.style.margin = '0 0 6px 0'; header.style.textAlign = 'center'; finalWrap.appendChild(header); }
         const dateLabel = document.querySelector('label')?.cloneNode(true);
         if (dateLabel) {
           const origDate = document.getElementById('date');
           const input = dateLabel.querySelector('input');
           if (origDate && input) { input.value = origDate.value || ''; input.readOnly = true; input.style.pointerEvents = 'none'; }
+          dateLabel.style.display = 'block';
+          dateLabel.style.textAlign = 'left';
+          dateLabel.style.margin = '0 0 6px 0';
           finalWrap.appendChild(dateLabel);
         }
 
-        // two columns container (full width)
+        // two columns — remove large gaps so each column fills close to 50% of inner width
         const cols = document.createElement('div');
         cols.style.display = 'flex';
-        cols.style.gap = '12px';
-        cols.style.marginTop = '8px';
+        cols.style.gap = '6px';
+        cols.style.marginTop = '4px';
 
         const leftCol = document.createElement('div');
         leftCol.style.flex = '1';
@@ -279,10 +273,9 @@ td:first-child { text-align: left; padding-left: 8px; }
         cols.appendChild(rightCol);
         finalWrap.appendChild(cols);
 
-        // bottom section (notes/sales/staffs) placed under tables
+        // bottom section — clone & copy values
         const bottom = document.querySelector('.bottom-section')?.cloneNode(true);
         if (bottom) {
-          // copy values
           bottom.querySelectorAll('input').forEach(inp => {
             const id = inp.id;
             if (!id) return;
@@ -293,37 +286,52 @@ td:first-child { text-align: left; padding-left: 8px; }
             inp.readOnly = true;
             inp.style.pointerEvents = 'none';
           });
-          bottom.style.marginTop = '12px';
+          bottom.style.marginTop = '10px';
           finalWrap.appendChild(bottom);
         }
 
         document.body.appendChild(finalWrap);
 
-        // render to canvas sized so canvas.width = wrapperCssWidthPx * renderScale
-        const canvas = await html2canvas(finalWrap, { scale: renderScale, backgroundColor: '#fff' });
+        // render finalWrap
+        const canvas = await html2canvas(finalWrap, { scale: renderScale, backgroundColor: '#fff', useCORS: true });
 
+        // remove wrapper
         document.body.removeChild(finalWrap);
 
-        // canvas px -> mm
+        // convert px->mm
         const canvasWidthMm = canvas.width * pxToMm;
         const canvasHeightMm = canvas.height * pxToMm;
 
-        // fit to page inner area (prefer width)
-        const fitScale = Math.min(pageInnerW / canvasWidthMm, pageInnerH / canvasHeightMm, 1);
-        const imgWmm = canvasWidthMm * fitScale;
-        const imgHmm = canvasHeightMm * fitScale;
+        // prefer to scale to full printable width (if resulting height fits)
+        const widthScale = pageInnerW / canvasWidthMm;
+        const candidateHeight = canvasHeightMm * widthScale;
+        let imgWmm, imgHmm, x, y;
 
-        // center on page leaving margin
-        const x = (pdf.internal.pageSize.getWidth() - imgWmm) / 2;
-        const y = Math.max(margin, (pdf.internal.pageSize.getHeight() - imgHmm) / 2);
+        if (candidateHeight <= pageInnerH) {
+          // width-first fit: stretch to full printable width, place at left margin
+          imgWmm = pageInnerW;
+          imgHmm = candidateHeight;
+          x = margin;
+          y = margin;
+        } else {
+          // fallback: scale to best fit inside page (will preserve aspect)
+          const fitScale = Math.min(pageInnerW / canvasWidthMm, pageInnerH / canvasHeightMm, 1);
+          imgWmm = canvasWidthMm * fitScale;
+          imgHmm = canvasHeightMm * fitScale;
+          // center horizontally, keep top margin
+          x = (pdf.internal.pageSize.getWidth() - imgWmm) / 2;
+          y = margin;
+        }
 
+        // draw
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, imgWmm, imgHmm);
+
         const date = document.getElementById('date')?.value || '(No Date)';
         pdf.save('daily_stock_' + date + '.pdf');
 
-      } catch (e) {
-        alert('PDF export failed: ' + (e && e.message ? e.message : e));
-        console.error(e);
+      } catch (err) {
+        alert('PDF export failed: ' + (err && err.message ? err.message : err));
+        console.error(err);
       }
     }
   </script>

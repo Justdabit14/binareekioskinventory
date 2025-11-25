@@ -138,7 +138,7 @@ td:first-child { text-align: left; padding-left: 8px; }
     const { jsPDF } = window.jspdf;
     if (!window.html2canvas) throw new Error("html2canvas not loaded");
 
-    // PDF setup
+    // PDF / page setup
     const pdf = new jsPDF("p", "mm", "a4");
     const margin = 8; // mm
     const pageW = pdf.internal.pageSize.getWidth();
@@ -146,23 +146,22 @@ td:first-child { text-align: left; padding-left: 8px; }
     const pageInnerW = pageW - margin * 2;
     const pageInnerH = pageH - margin * 2;
 
-    // conversion helpers
+    // Convert px <-> mm helpers
     const pxToMm = 25.4 / 96;
-    const renderScale = Math.max(2, Math.round((window.devicePixelRatio || 1) * 2));
+    // Fixed render scale to avoid extreme upsizing on high-DPI devices
+    const renderScale = 2;
     const wrapperCssWidthPx = Math.round(pageInnerW / (pxToMm * renderScale));
 
-    // cloning helpers
+    // Copy form fields values into cloned DOM so html2canvas renders current values
     const copyInputsFromLive = cloneRoot => {
       cloneRoot.querySelectorAll("input").forEach(cloneInp => {
         const live = document.getElementById(cloneInp.id);
         if (!live) return;
         if (cloneInp.type === "checkbox") {
-          // replace checkbox with text marker so html2canvas renders it consistently
           const mark = document.createElement("span");
           mark.textContent = live.checked ? "☑" : "☐";
           mark.style.marginLeft = "6px";
           cloneInp.style.display = "none";
-          // insert marker after the checkbox element (inside same parent)
           cloneInp.parentNode && cloneInp.parentNode.insertBefore(mark, cloneInp.nextSibling);
         } else {
           cloneInp.value = live.value || "";
@@ -172,7 +171,7 @@ td:first-child { text-align: left; padding-left: 8px; }
       });
     };
 
-    // collect pieces to print (header, date, table, bottom)
+    // Build a temporary wrapper sized so canvas will match printable width
     const wrap = document.createElement("div");
     wrap.style.position = "fixed";
     wrap.style.left = "-9999px";
@@ -180,11 +179,11 @@ td:first-child { text-align: left; padding-left: 8px; }
     wrap.style.background = "#fff";
     wrap.style.width = wrapperCssWidthPx + "px";
     wrap.style.boxSizing = "border-box";
-    wrap.style.padding = "0 4px"; // tiny padding for nicer edges
+    wrap.style.padding = "0 4px"; // keep a tiny gutter for nicer edges
     wrap.style.fontFamily = "Arial, sans-serif";
     wrap.style.color = "#000";
 
-    // Header
+    // copy header & date
     const header = document.querySelector("h1")?.cloneNode(true);
     if (header) {
       header.style.margin = "0 0 6px 0";
@@ -192,8 +191,6 @@ td:first-child { text-align: left; padding-left: 8px; }
       header.style.textAlign = "center";
       wrap.appendChild(header);
     }
-
-    // Date label (copy and set value)
     const dateLabel = document.querySelector("label")?.cloneNode(true);
     if (dateLabel) {
       const origDate = document.getElementById("date");
@@ -208,43 +205,41 @@ td:first-child { text-align: left; padding-left: 8px; }
       wrap.appendChild(dateLabel);
     }
 
-    // Table (clone current table and copy live values)
+    // clone table (with current values)
     const table = document.getElementById("stockTable")?.cloneNode(true);
     if (!table) throw new Error("stockTable not found");
-    // ensure full-width in wrapper
     table.style.width = "100%";
     copyInputsFromLive(table);
     wrap.appendChild(table);
 
-    // Bottom section (notes, sales, staffs) - clone and populate
+    // clone bottom section
     const bottom = document.querySelector(".bottom-section")?.cloneNode(true);
     if (bottom) {
       copyInputsFromLive(bottom);
-      // for staff checkboxes (replaced above) ensure display looks clean
       bottom.style.marginTop = "10px";
       wrap.appendChild(bottom);
     }
 
     document.body.appendChild(wrap);
 
-    // render to canvas
+    // render wrapper to canvas
     const canvas = await html2canvas(wrap, { scale: renderScale, backgroundColor: "#fff", useCORS: true });
     document.body.removeChild(wrap);
 
-    // convert canvas px to mm
+    // canvas -> mm
     const canvasWidthMm = canvas.width * pxToMm;
     const canvasHeightMm = canvas.height * pxToMm;
 
-    // fit to printable width (preferred)
+    // Fit width-first. Because renderScale and wrapperCssWidthPx are chosen to match pageInnerW,
+    // this should avoid extreme magnification while filling page width nicely.
     const widthScale = pageInnerW / canvasWidthMm;
     const imgWmm = pageInnerW;
     const imgHmm = canvasHeightMm * widthScale;
     const imgData = canvas.toDataURL("image/png");
 
-    // place on first page with margin
+    // put the image on the PDF and paginate vertically when needed
     pdf.addImage(imgData, "PNG", margin, margin, imgWmm, imgHmm);
 
-    // multipage if needed (slice by vertical offset)
     if (imgHmm > pageInnerH) {
       let remaining = imgHmm - pageInnerH;
       let offset = pageInnerH;
@@ -256,7 +251,6 @@ td:first-child { text-align: left; padding-left: 8px; }
       }
     }
 
-    // save file
     const selectedDate = document.getElementById("date")?.value || new Date().toISOString().split("T")[0];
     pdf.save(`Stock-${selectedDate}.pdf`);
   } catch (err) {

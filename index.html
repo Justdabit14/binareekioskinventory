@@ -138,26 +138,20 @@ td:first-child { text-align: left; padding-left: 8px; }
         const { jsPDF } = window.jspdf;
         if (!window.html2canvas) throw new Error("html2canvas not loaded");
 
+        // page and conversion setup (A4 portrait)
         const pdf = new jsPDF('p', 'mm', 'a4');
-        const margin = 8; // mm
-        const pageInnerW = pdf.internal.pageSize.getWidth() - margin * 2;
-        const pageInnerH = pdf.internal.pageSize.getHeight() - margin * 2;
+        const margin = 8; // mm margins
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        const pageInnerW = pageW - margin * 2;
+        const pageInnerH = pageH - margin * 2;
 
-        // mm per CSS px and scale (use devicePixelRatio to improve phone rendering)
+        // px->mm helper and canvas scale for sharp output
         const pxToMm = 25.4 / 96;
-        const deviceScale = Math.max(2, Math.round((window.devicePixelRatio || 1) * 2));
-        const renderScale = deviceScale;
-
-        // CSS px width so canvas width (cssPx * renderScale) becomes pageInnerW when converted to mm:
-        // wrapperCssWidthPx * renderScale * pxToMm === pageInnerW => wrapperCssWidthPx = pageInnerW / (pxToMm * renderScale)
+        const renderScale = Math.max(2, Math.round((window.devicePixelRatio || 1) * 2));
         const wrapperCssWidthPx = Math.round(pageInnerW / (pxToMm * renderScale));
 
-        // split categories by count (same logic you already have)
-        const keys = Object.keys(categories);
-        const mid = Math.ceil(keys.length / 2);
-        const leftKeys = keys.slice(0, mid);
-        const rightKeys = keys.slice(mid);
-
+        // helpers
         const val = id => {
           const el = document.getElementById(id);
           if (!el) return '';
@@ -166,59 +160,61 @@ td:first-child { text-align: left; padding-left: 8px; }
         };
         const safe = s => String(s).replace(/[^a-z0-9\-_]/gi, '_');
 
-        function buildTableForKeys(keysArr) {
+        // Build one single full-width printable table (category headers + rows)
+        function buildSingleTable() {
           const table = document.createElement('table');
           table.style.width = '100%';
           table.style.borderCollapse = 'collapse';
           table.style.fontSize = '11px';
+          table.style.border = '1px solid #bbb';
           table.innerHTML = `<thead>
             <tr>
-              <th style="border:1px solid #ccc;padding:6px;text-align:center">Item</th>
-              <th style="border:1px solid #ccc;padding:6px;text-align:center">Opening</th>
-              <th style="border:1px solid #ccc;padding:6px;text-align:center">Closing</th>
-              <th style="border:1px solid #ccc;padding:6px;text-align:center">Status</th>
+              <th style="border:1px solid #ccc;padding:6px;text-align:left;width:40%">Item</th>
+              <th style="border:1px solid #ccc;padding:6px;text-align:center;width:20%">Opening</th>
+              <th style="border:1px solid #ccc;padding:6px;text-align:center;width:20%">Closing</th>
+              <th style="border:1px solid #ccc;padding:6px;text-align:center;width:20%">Status</th>
             </tr>
           </thead>`;
           const tb = document.createElement('tbody');
 
-          keysArr.forEach(cat => {
-            const catRow = document.createElement('tr');
-            catRow.className = 'category';
-            catRow.innerHTML = `<td colspan="4" style="text-align:left;padding:6px;background:#f0f0f0;font-weight:bold">${cat}</td>`;
-            tb.appendChild(catRow);
+          Object.keys(categories).forEach(cat => {
+            const hdr = document.createElement('tr');
+            hdr.innerHTML = `<td colspan="4" style="padding:6px;background:#f0f0f0;font-weight:700;text-align:left">${cat}</td>`;
+            tb.appendChild(hdr);
 
             categories[cat].forEach(item => {
-              const b = `${safe(cat)}-${safe(item)}`;
-              let inner = '';
+              const idBase = `${safe(cat)}-${safe(item)}`;
+              let rowInner = '';
               if (item === 'Egg') {
-                inner = `<td>${item}</td>
-                  <td><input value="${val('openCtn-'+b) || ''}" readonly style="width:50px;text-align:center"> ctn <input value="${val('openPcs-'+b) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td><input value="${val('closeCtn-'+b) || ''}" readonly style="width:50px;text-align:center"> ctn <input value="${val('closePcs-'+b) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td><label><input type="checkbox" ${val('beli-'+b) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+b) ? 'checked' : ''} disabled> Bawak</label></td>`;
+                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('openCtn-'+idBase) || ''}" readonly style="width:40px;text-align:center"> ctn <input value="${val('openPcs-'+idBase) || ''}" readonly style="width:40px;text-align:center"> pcs</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('closeCtn-'+idBase) || ''}" readonly style="width:40px;text-align:center"> ctn <input value="${val('closePcs-'+idBase) || ''}" readonly style="width:40px;text-align:center"> pcs</td>
+                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
               } else if (item === 'Smash Burger') {
-                inner = `<td>${item}</td>
-                  <td><input value="${val('openPcs-'+b) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td><input value="${val('closePcs-'+b) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td><label><input type="checkbox" ${val('beli-'+b) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+b) ? 'checked' : ''} disabled> Bawak</label></td>`;
+                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('openPcs-'+idBase) || ''}" readonly style="width:60px;text-align:center"> pcs</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('closePcs-'+idBase) || ''}" readonly style="width:60px;text-align:center"> pcs</td>
+                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
               } else if (item === 'Tomato Puree') {
-                inner = `<td>${item}</td>
-                  <td><input value="${val('openCans-'+b) || ''}" readonly style="width:50px;text-align:center"> cans</td>
-                  <td><input value="${val('closeCans-'+b) || ''}" readonly style="width:50px;text-align:center"> cans</td>
-                  <td><label><input type="checkbox" ${val('beli-'+b) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+b) ? 'checked' : ''} disabled> Bawak</label></td>`;
+                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('openCans-'+idBase) || ''}" readonly style="width:60px;text-align:center"> cans</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('closeCans-'+idBase) || ''}" readonly style="width:60px;text-align:center"> cans</td>
+                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
               } else if (['Sauces & Spices','Cheese','Sayur'].includes(cat) || item === 'Oil' || item === 'Margarine' || item === 'Sloppy Joe' || item === 'Black Pepper' || item === 'White Pepper') {
-                inner = `<td>${item}</td>
-                  <td><input value="${val('open-'+b) || ''}" readonly style="width:70px;text-align:center"></td>
-                  <td><input value="${val('close-'+b) || ''}" readonly style="width:70px;text-align:center"></td>
-                  <td><label><input type="checkbox" ${val('beli-'+b) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+b) ? 'checked' : ''} disabled> Bawak</label></td>`;
+                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('open-'+idBase) || ''}" readonly style="width:80px;text-align:center"></td>
+                  <td style="padding:6px;text-align:center"><input value="${val('close-'+idBase) || ''}" readonly style="width:80px;text-align:center"></td>
+                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
               } else {
-                inner = `<td>${item}</td>
-                  <td><input value="${val('openPkt-'+b) || ''}" readonly style="width:50px;text-align:center"> pkt <input value="${val('openPcs-'+b) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td><input value="${val('closePkt-'+b) || ''}" readonly style="width:50px;text-align:center"> pkt <input value="${val('closePcs-'+b) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td><label><input type="checkbox" ${val('beli-'+b) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+b) ? 'checked' : ''} disabled> Bawak</label></td>`;
+                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('openPkt-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pkt <input value="${val('openPcs-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
+                  <td style="padding:6px;text-align:center"><input value="${val('closePkt-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pkt <input value="${val('closePcs-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
+                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
               }
 
               const tr = document.createElement('tr');
-              tr.innerHTML = inner;
+              tr.style.borderTop = '1px solid #e0e0e0';
+              tr.innerHTML = rowInner;
               tb.appendChild(tr);
             });
           });
@@ -227,53 +223,39 @@ td:first-child { text-align: left; padding-left: 8px; }
           return table;
         }
 
-        // Build printable wrapper sized for printed width (no horizontal padding)
-        const finalWrap = document.createElement('div');
-        finalWrap.style.position = 'fixed';
-        finalWrap.style.left = '-9999px';
-        finalWrap.style.top = '0';
-        finalWrap.style.background = '#fff';
-        // keep only vertical padding to avoid reducing available width
-        finalWrap.style.padding = '8px 0';
-        finalWrap.style.width = wrapperCssWidthPx + 'px';
-        finalWrap.style.boxSizing = 'border-box';
-        finalWrap.style.fontFamily = 'Arial, sans-serif';
-        finalWrap.style.fontSize = '11px';
-        finalWrap.style.color = '#000';
-
-        // header + date (compact)
+        // Build printable wrapper (full page width inside margins)
+        const wrap = document.createElement('div');
+        wrap.style.position = 'fixed';
+        wrap.style.left = '-9999px';
+        wrap.style.top = '0';
+        wrap.style.background = '#fff';
+        wrap.style.width = wrapperCssWidthPx + 'px';
+        wrap.style.boxSizing = 'border-box';
+        wrap.style.padding = '0';
+        wrap.style.fontFamily = 'Arial, sans-serif';
+        wrap.style.color = '#000';
+        // header + compact date
         const header = document.querySelector('h1')?.cloneNode(true);
-        if (header) { header.style.fontSize = '16px'; header.style.margin = '0 0 6px 0'; header.style.textAlign = 'center'; finalWrap.appendChild(header); }
+        if (header) {
+          header.style.margin = '0 0 6px 0';
+          header.style.fontSize = '16px';
+          header.style.textAlign = 'center';
+          wrap.appendChild(header);
+        }
         const dateLabel = document.querySelector('label')?.cloneNode(true);
         if (dateLabel) {
-          const origDate = document.getElementById('date');
+          const orig = document.getElementById('date');
           const input = dateLabel.querySelector('input');
-          if (origDate && input) { input.value = origDate.value || ''; input.readOnly = true; input.style.pointerEvents = 'none'; }
+          if (orig && input) { input.value = orig.value || ''; input.readOnly = true; input.style.pointerEvents = 'none'; }
           dateLabel.style.display = 'block';
-          dateLabel.style.textAlign = 'left';
-          dateLabel.style.margin = '0 0 6px 0';
-          finalWrap.appendChild(dateLabel);
+          dateLabel.style.margin = '0 0 8px 0';
+          wrap.appendChild(dateLabel);
         }
 
-        // two columns — remove large gaps so each column fills close to 50% of inner width
-        const cols = document.createElement('div');
-        cols.style.display = 'flex';
-        cols.style.gap = '6px';
-        cols.style.marginTop = '4px';
+        // append simple single table
+        wrap.appendChild(buildSingleTable());
 
-        const leftCol = document.createElement('div');
-        leftCol.style.flex = '1';
-        leftCol.appendChild(buildTableForKeys(leftKeys));
-
-        const rightCol = document.createElement('div');
-        rightCol.style.flex = '1';
-        rightCol.appendChild(buildTableForKeys(rightKeys));
-
-        cols.appendChild(leftCol);
-        cols.appendChild(rightCol);
-        finalWrap.appendChild(cols);
-
-        // bottom section — clone & copy values
+        // append bottom (notes/sales/staffs) — copy values
         const bottom = document.querySelector('.bottom-section')?.cloneNode(true);
         if (bottom) {
           bottom.querySelectorAll('input').forEach(inp => {
@@ -287,48 +269,41 @@ td:first-child { text-align: left; padding-left: 8px; }
             inp.style.pointerEvents = 'none';
           });
           bottom.style.marginTop = '10px';
-          finalWrap.appendChild(bottom);
+          wrap.appendChild(bottom);
         }
 
-        document.body.appendChild(finalWrap);
+        document.body.appendChild(wrap);
 
-        // render finalWrap
-        const canvas = await html2canvas(finalWrap, { scale: renderScale, backgroundColor: '#fff', useCORS: true });
+        // render wrapper
+        const canvas = await html2canvas(wrap, { scale: renderScale, backgroundColor: '#fff', useCORS: true });
+        document.body.removeChild(wrap);
 
-        // remove wrapper
-        document.body.removeChild(finalWrap);
-
-        // convert px->mm
+        // convert and fit to full printable width — paginate vertically if needed
         const canvasWidthMm = canvas.width * pxToMm;
         const canvasHeightMm = canvas.height * pxToMm;
-
-        // prefer to scale to full printable width (if resulting height fits)
         const widthScale = pageInnerW / canvasWidthMm;
-        const candidateHeight = canvasHeightMm * widthScale;
-        let imgWmm, imgHmm, x, y;
+        const imgWmm = pageInnerW;
+        const imgHmm = canvasHeightMm * widthScale;
+        const imgData = canvas.toDataURL('image/png');
 
-        if (candidateHeight <= pageInnerH) {
-          // width-first fit: stretch to full printable width, place at left margin
-          imgWmm = pageInnerW;
-          imgHmm = candidateHeight;
-          x = margin;
-          y = margin;
-        } else {
-          // fallback: scale to best fit inside page (will preserve aspect)
-          const fitScale = Math.min(pageInnerW / canvasWidthMm, pageInnerH / canvasHeightMm, 1);
-          imgWmm = canvasWidthMm * fitScale;
-          imgHmm = canvasHeightMm * fitScale;
-          // center horizontally, keep top margin
-          x = (pdf.internal.pageSize.getWidth() - imgWmm) / 2;
-          y = margin;
+        // add first page
+        pdf.addImage(imgData, 'PNG', margin, margin, imgWmm, imgHmm);
+
+        // paginate by shifting the large image up on new pages
+        if (imgHmm > pageInnerH) {
+          let remaining = imgHmm - pageInnerH;
+          let offset = pageInnerH;
+          while (remaining > 0) {
+            pdf.addPage();
+            // place the same image shifted up so next slice is visible
+            pdf.addImage(imgData, 'PNG', margin, margin - offset, imgWmm, imgHmm);
+            remaining -= pageInnerH;
+            offset += pageInnerH;
+          }
         }
-
-        // draw
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, imgWmm, imgHmm);
 
         const date = document.getElementById('date')?.value || '(No Date)';
         pdf.save('daily_stock_' + date + '.pdf');
-
       } catch (err) {
         alert('PDF export failed: ' + (err && err.message ? err.message : err));
         console.error(err);

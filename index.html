@@ -134,69 +134,135 @@ td:first-child { text-align: left; padding-left: 8px; }
 
   <script>
   async function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const mainContent = document.getElementById("mainContent");
+  try {
+    const { jsPDF } = window.jspdf;
+    if (!window.html2canvas) throw new Error("html2canvas not loaded");
 
-  // Get the date input
-  let selectedDate = document.getElementById("date")?.value;
-  if (!selectedDate) selectedDate = new Date().toISOString().split("T")[0];
-  const filename = `Stock-${selectedDate}.pdf`;
+    // PDF setup
+    const pdf = new jsPDF("p", "mm", "a4");
+    const margin = 8; // mm
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const pageInnerW = pageW - margin * 2;
+    const pageInnerH = pageH - margin * 2;
 
-  // --- Replace checkboxes with symbols so html2canvas captures them ---
-  const swaps = [];
-  mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
-    swaps.push({ element: cb });
+    // conversion helpers
+    const pxToMm = 25.4 / 96;
+    const renderScale = Math.max(2, Math.round((window.devicePixelRatio || 1) * 2));
+    const wrapperCssWidthPx = Math.round(pageInnerW / (pxToMm * renderScale));
 
-    const span = document.createElement("span");
-    span.textContent = cb.checked ? "☑" : "☐";
-    span.style.marginLeft = "4px";
-    cb.style.display = "none";
-    cb.parentNode.insertBefore(span, cb.nextSibling);
-  });
+    // cloning helpers
+    const copyInputsFromLive = cloneRoot => {
+      cloneRoot.querySelectorAll("input").forEach(cloneInp => {
+        const live = document.getElementById(cloneInp.id);
+        if (!live) return;
+        if (cloneInp.type === "checkbox") {
+          // replace checkbox with text marker so html2canvas renders it consistently
+          const mark = document.createElement("span");
+          mark.textContent = live.checked ? "☑" : "☐";
+          mark.style.marginLeft = "6px";
+          cloneInp.style.display = "none";
+          // insert marker after the checkbox element (inside same parent)
+          cloneInp.parentNode && cloneInp.parentNode.insertBefore(mark, cloneInp.nextSibling);
+        } else {
+          cloneInp.value = live.value || "";
+          cloneInp.readOnly = true;
+          cloneInp.style.pointerEvents = "none";
+        }
+      });
+    };
 
-  // --- Render page ---
-  const canvas = await html2canvas(mainContent, {
-    scale: 2,
-    useCORS: true,
-    windowWidth: mainContent.scrollWidth
-  });
+    // collect pieces to print (header, date, table, bottom)
+    const wrap = document.createElement("div");
+    wrap.style.position = "fixed";
+    wrap.style.left = "-9999px";
+    wrap.style.top = "0";
+    wrap.style.background = "#fff";
+    wrap.style.width = wrapperCssWidthPx + "px";
+    wrap.style.boxSizing = "border-box";
+    wrap.style.padding = "0 4px"; // tiny padding for nicer edges
+    wrap.style.fontFamily = "Arial, sans-serif";
+    wrap.style.color = "#000";
 
-  // Restore checkboxes after render
-  swaps.forEach(s => {
-    s.element.style.display = "";
-    const next = s.element.nextSibling;
-    if (next && next.textContent?.match(/[☑☐]/)) next.remove();
-  });
+    // Header
+    const header = document.querySelector("h1")?.cloneNode(true);
+    if (header) {
+      header.style.margin = "0 0 6px 0";
+      header.style.fontSize = "16px";
+      header.style.textAlign = "center";
+      wrap.appendChild(header);
+    }
 
-  // Convert canvas to image
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDF("p", "mm", "a4");
+    // Date label (copy and set value)
+    const dateLabel = document.querySelector("label")?.cloneNode(true);
+    if (dateLabel) {
+      const origDate = document.getElementById("date");
+      const input = dateLabel.querySelector("input");
+      if (origDate && input) {
+        input.value = origDate.value || "";
+        input.readOnly = true;
+        input.style.pointerEvents = "none";
+      }
+      dateLabel.style.display = "block";
+      dateLabel.style.margin = "0 0 8px 0";
+      wrap.appendChild(dateLabel);
+    }
 
-  // A4 dimensions
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
+    // Table (clone current table and copy live values)
+    const table = document.getElementById("stockTable")?.cloneNode(true);
+    if (!table) throw new Error("stockTable not found");
+    // ensure full-width in wrapper
+    table.style.width = "100%";
+    copyInputsFromLive(table);
+    wrap.appendChild(table);
 
-  // SPACE RESERVED (top+bottom)
-  const topMargin = 10;
-  const bottomMargin = 10;
+    // Bottom section (notes, sales, staffs) - clone and populate
+    const bottom = document.querySelector(".bottom-section")?.cloneNode(true);
+    if (bottom) {
+      copyInputsFromLive(bottom);
+      // for staff checkboxes (replaced above) ensure display looks clean
+      bottom.style.marginTop = "10px";
+      wrap.appendChild(bottom);
+    }
 
-  const usableHeight = pageHeight - topMargin - bottomMargin;
+    document.body.appendChild(wrap);
 
-  // Fit image inside page while keeping ratio
-  const ratio = Math.min(pageWidth / canvas.width, usableHeight / canvas.height);
+    // render to canvas
+    const canvas = await html2canvas(wrap, { scale: renderScale, backgroundColor: "#fff", useCORS: true });
+    document.body.removeChild(wrap);
 
-  const imgWidth = canvas.width * ratio;
-  const imgHeight = canvas.height * ratio;
+    // convert canvas px to mm
+    const canvasWidthMm = canvas.width * pxToMm;
+    const canvasHeightMm = canvas.height * pxToMm;
 
-  // --- Print date at top ---
-  pdf.setFontSize(12);
-  pdf.text(`Date: ${selectedDate}`, 10, 8);
+    // fit to printable width (preferred)
+    const widthScale = pageInnerW / canvasWidthMm;
+    const imgWmm = pageInnerW;
+    const imgHmm = canvasHeightMm * widthScale;
+    const imgData = canvas.toDataURL("image/png");
 
-  // --- Insert table image ---
-  pdf.addImage(imgData, "PNG", 0, topMargin, imgWidth, imgHeight);
+    // place on first page with margin
+    pdf.addImage(imgData, "PNG", margin, margin, imgWmm, imgHmm);
 
-  // --- Save file ---
-  pdf.save(filename);
+    // multipage if needed (slice by vertical offset)
+    if (imgHmm > pageInnerH) {
+      let remaining = imgHmm - pageInnerH;
+      let offset = pageInnerH;
+      while (remaining > 0) {
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", margin, margin - offset, imgWmm, imgHmm);
+        remaining -= pageInnerH;
+        offset += pageInnerH;
+      }
+    }
+
+    // save file
+    const selectedDate = document.getElementById("date")?.value || new Date().toISOString().split("T")[0];
+    pdf.save(`Stock-${selectedDate}.pdf`);
+  } catch (err) {
+    alert("PDF export failed: " + (err && err.message ? err.message : err));
+    console.error(err);
+  }
 }
 
 
@@ -369,4 +435,3 @@ td:first-child { text-align: left; padding-left: 8px; }
 
 </body>
 </html>
-

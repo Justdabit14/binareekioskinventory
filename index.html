@@ -240,7 +240,12 @@ td:first-child { text-align: left; padding-left: 8px; }
     // Generate rows
     Object.keys(categories).forEach(cat => {
       tbody.innerHTML += `<tr class="category"><td colspan="4">${cat}</td></tr>`;
+
+      // helper to create safe id parts (remove spaces/special chars)
+      const safe = str => String(str).replace(/[^a-z0-9\-_]/gi, '_');
+
       categories[cat].forEach(item => {
+        const base = safe(cat) + '-' + safe(item);
         let rowHTML = "";
 
         // Special cases
@@ -248,11 +253,11 @@ td:first-child { text-align: left; padding-left: 8px; }
           rowHTML = `
             <tr>
               <td>${item}</td>
-              <td><input type="text" id="open-${item}" placeholder="Opening"></td>
-              <td><input type="text" id="close-${item}" placeholder="Closing"></td>
+              <td><input type="text" id="open-${base}" placeholder="Opening"></td>
+              <td><input type="text" id="close-${base}" placeholder="Closing"></td>
               <td>
-                <label><input type="checkbox" id="beli-${item}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
               </td>
             </tr>`;
         } 
@@ -260,11 +265,11 @@ td:first-child { text-align: left; padding-left: 8px; }
           rowHTML = `
             <tr>
               <td>${item}</td>
-              <td><input type="number" id="openPcs-${item}" placeholder="Pcs"> pcs</td>
-              <td><input type="number" id="closePcs-${item}" placeholder="Pcs"> pcs</td>
+              <td><input type="number" id="openPcs-${base}" placeholder="Pcs"> pcs</td>
+              <td><input type="number" id="closePcs-${base}" placeholder="Pcs"> pcs</td>
               <td>
-                <label><input type="checkbox" id="beli-${item}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
               </td>
             </tr>`;
         }
@@ -273,16 +278,16 @@ td:first-child { text-align: left; padding-left: 8px; }
             <tr>
               <td>${item}</td>
               <td>
-                <input type="number" id="openCtn-${item}" placeholder="Ctn"> ctn
-                <input type="number" id="openPcs-${item}" placeholder="Pcs"> pcs
+                <input type="number" id="openCtn-${base}" placeholder="Ctn"> ctn
+                <input type="number" id="openPcs-${base}" placeholder="Pcs"> pcs
               </td>
               <td>
-                <input type="number" id="closeCtn-${item}" placeholder="Ctn"> ctn
-                <input type="number" id="closePcs-${item}" placeholder="Pcs"> pcs
+                <input type="number" id="closeCtn-${base}" placeholder="Ctn"> ctn
+                <input type="number" id="closePcs-${base}" placeholder="Pcs"> pcs
               </td>
               <td>
-                <label><input type="checkbox" id="beli-${item}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
               </td>
             </tr>`;
         }
@@ -290,24 +295,23 @@ td:first-child { text-align: left; padding-left: 8px; }
           rowHTML = `
             <tr>
               <td>${item}</td>
-              <td><input type="number" id="openCans-${item}" placeholder="Cans"> cans</td>
-              <td><input type="number" id="closeCans-${item}" placeholder="Cans"> cans</td>
+              <td><input type="number" id="openCans-${base}" placeholder="Cans"> cans</td>
+              <td><input type="number" id="closeCans-${base}" placeholder="Cans"> cans</td>
               <td>
-                <label><input type="checkbox" id="beli-${item}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
               </td>
             </tr>`;
         }
         else if (["Sauces & Spices", "Cheese", "Sayur"].includes(cat) || item === "Oil" || item === "Margarine") {
-          
           rowHTML = `
             <tr>
               <td>${item}</td>
-              <td><input type="text" id="open-${item}" placeholder="Opening"></td>
-              <td><input type="text" id="close-${item}" placeholder="Closing"></td>
+              <td><input type="text" id="open-${base}" placeholder="Opening"></td>
+              <td><input type="text" id="close-${base}" placeholder="Closing"></td>
               <td>
-                <label><input type="checkbox" id="beli-${item}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
               </td>
             </tr>`;
         } 
@@ -317,16 +321,16 @@ td:first-child { text-align: left; padding-left: 8px; }
             <tr>
               <td>${item}</td>
               <td>
-                <input type="number" id="openPkt-${item}" placeholder="Pkt"> pkt
-                <input type="number" id="openPcs-${item}" placeholder="Pcs"> pcs
+                <input type="number" id="openPkt-${base}" placeholder="Pkt"> pkt
+                <input type="number" id="openPcs-${base}" placeholder="Pcs"> pcs
               </td>
               <td>
-                <input type="number" id="closePkt-${item}" placeholder="Pkt"> pkt
-                <input type="number" id="closePcs-${item}" placeholder="Pcs"> pcs
+                <input type="number" id="closePkt-${base}" placeholder="Pkt"> pkt
+                <input type="number" id="closePcs-${base}" placeholder="Pcs"> pcs
               </td>
               <td>
-                <label><input type="checkbox" id="beli-${item}"> Beli</label>
-                <label><input type="checkbox" id="bawak-${item}"> Bawak</label>
+                <label><input type="checkbox" id="beli-${base}"> Beli</label>
+                <label><input type="checkbox" id="bawak-${base}"> Bawak</label>
               </td>
             </tr>`;
         }

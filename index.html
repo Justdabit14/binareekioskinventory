@@ -133,12 +133,11 @@ td:first-child { text-align: left; padding-left: 8px; }
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <script>
-    async function downloadPDF() {
+  async function downloadPDF() {
   try {
     const { jsPDF } = window.jspdf;
     if (!window.html2canvas) throw new Error("html2canvas not loaded");
 
-    // Setup A4 PDF
     const pdf = new jsPDF("p", "mm", "a4");
     const margin = 10;
     const pageW = pdf.internal.pageSize.getWidth();
@@ -146,52 +145,46 @@ td:first-child { text-align: left; padding-left: 8px; }
     const usableW = pageW - margin * 2;
     const usableH = pageH - margin * 2;
 
-    // px → mm conversion
     const pxToMm = 25.4 / 96;
 
-    // Wrapper width must always match A4 width (scaled)
-    const renderScale = 2.2; 
+    // Render scale + forced wrapper width
+    const renderScale = 2.2;
     const wrapperWidthPx = Math.floor((usableW / pxToMm) * (1 / renderScale));
 
-    // Build temporary wrapper
+    // Build wrapper
     const wrapper = document.createElement("div");
     wrapper.style.position = "fixed";
     wrapper.style.left = "-9999px";
     wrapper.style.top = "0";
     wrapper.style.width = wrapperWidthPx + "px";
     wrapper.style.background = "#fff";
-    wrapper.style.padding = "0";
     wrapper.style.fontFamily = "Arial, sans-serif";
 
     // Clone header
     const head = document.querySelector("h1").cloneNode(true);
     head.style.textAlign = "center";
     head.style.fontSize = "18px";
-    head.style.marginBottom = "8px";
     wrapper.appendChild(head);
 
-    // Clone & freeze date
-    const dlabel = document.querySelector('label').cloneNode(true);
+    // Clone date
+    const dlabel = document.querySelector("label").cloneNode(true);
     const dinput = dlabel.querySelector("input");
     const realDate = document.getElementById("date");
-    if (realDate) dinput.value = realDate.value;
+    dinput.value = realDate.value;
     dinput.readOnly = true;
-    dinput.style.pointerEvents = "none";
-    dlabel.style.marginBottom = "10px";
     wrapper.appendChild(dlabel);
 
-    // Clone ENTIRE table output (exact as viewed)
+    // Clone table
     const table = document.querySelector("#stockTable").cloneNode(true);
     table.style.width = wrapperWidthPx + "px";
     table.querySelectorAll("input").forEach(i => {
       const live = document.getElementById(i.id);
       if (live) i.value = live.value;
       i.readOnly = true;
-      i.style.pointerEvents = "none";
     });
     wrapper.appendChild(table);
 
-    // Clone bottom section (notes + sales + staffs)
+    // Clone bottom
     const bottom = document.querySelector(".bottom-section").cloneNode(true);
     bottom.querySelectorAll("input").forEach(i => {
       const live = document.getElementById(i.id);
@@ -200,14 +193,12 @@ td:first-child { text-align: left; padding-left: 8px; }
         else i.value = live.value;
       }
       i.readOnly = true;
-      i.style.pointerEvents = "none";
     });
-    bottom.style.marginTop = "12px";
     wrapper.appendChild(bottom);
 
     document.body.appendChild(wrapper);
 
-    // Render canvas
+    // Render
     const canvas = await html2canvas(wrapper, {
       scale: renderScale,
       backgroundColor: "#fff",
@@ -216,40 +207,30 @@ td:first-child { text-align: left; padding-left: 8px; }
 
     document.body.removeChild(wrapper);
 
+    // Convert to mm
     const canvasWmm = canvas.width * pxToMm;
     const canvasHmm = canvas.height * pxToMm;
 
-    const scaleToFit = usableW / canvasWmm;
-    const finalW = usableW;
-    const finalH = canvasHmm * scaleToFit;
+    // SCALE TO FIT ONE PAGE ONLY
+    const scaleW = usableW / canvasWmm;
+    const scaleH = usableH / canvasHmm;
+    const finalScale = Math.min(scaleW, scaleH); // pick smaller to fit into one page
+
+    const finalW = canvasWmm * finalScale;
+    const finalH = canvasHmm * finalScale;
 
     const img = canvas.toDataURL("image/png");
 
-    // Add first page
     pdf.addImage(img, "PNG", margin, margin, finalW, finalH);
 
-    // Multi-page support
-    if (finalH > usableH) {
-      let yOffset = finalH - usableH;
-      let yShift = usableH;
-
-      while (yOffset > 0) {
-        pdf.addPage();
-        pdf.addImage(img, "PNG", margin, margin - yShift, finalW, finalH);
-        yOffset -= usableH;
-        yShift += usableH;
-      }
-    }
-
-    // Save file
     const date = document.getElementById("date").value || "no_date";
     pdf.save(`daily_stock_${date}.pdf`);
 
   } catch (err) {
     alert("PDF export failed: " + err.message);
-    console.error(err);
   }
 }
+
   </script>
 
   <script>

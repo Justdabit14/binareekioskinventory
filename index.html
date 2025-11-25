@@ -139,80 +139,160 @@ td:first-child { text-align: left; padding-left: 8px; }
         const { jsPDF } = window.jspdf;
         if (!window.html2canvas) throw new Error("html2canvas not loaded");
 
-        // Create pdf to compute page sizes before rendering
+        // PDF setup
         const pdf = new jsPDF('p', 'mm', 'a4');
         const margin = 8; // mm
         const pageInnerWidthMm = pdf.internal.pageSize.getWidth() - margin * 2;
         const pageInnerHeightMm = pdf.internal.pageSize.getHeight() - margin * 2;
 
-        // mm per CSS px approx at 96 DPI
+        // units conversion (CSS px <-> mm), html2canvas scale
         const pxToMm = 25.4 / 96;
-        const targetRenderScale = 2; // html2canvas scale (higher = sharper)
+        const scale = 2; // html2canvas render scale
 
-        // Set wrapper CSS width so canvas -> exact page inner width (mm -> px)
-        const wrapperCssWidthPx = Math.ceil(pageInnerWidthMm / (targetRenderScale * pxToMm));
+        // build a wrapper sized for the *page inner width* in CSS px (unscaled),
+        // then split the table into two side-by-side halves so the result fits a single A4 page at good font size.
+        const wrapperCssWidthPx = Math.ceil(pageInnerWidthMm / pxToMm);
 
-        // Clone parts we want to print
+        // collect original tbody rows
+        const originalRows = [...document.querySelectorAll('#stockTable tbody tr')];
+        const half = Math.ceil(originalRows.length / 2);
+        const leftRows = originalRows.slice(0, half);
+        const rightRows = originalRows.slice(half);
+
+        // helper: clone a row and convert inputs to text for printable output
+        function cloneRowToPrintable(row) {
+          const r = row.cloneNode(true);
+          r.querySelectorAll('input').forEach(inp => {
+            const span = document.createElement('span');
+            if (inp.type === 'checkbox' || inp.type === 'radio') span.textContent = inp.checked ? '✔' : '';
+            else span.textContent = inp.value || '';
+            span.style.display = 'inline-block';
+            span.style.minWidth = inp.offsetWidth ? inp.offsetWidth + 'px' : '40px';
+            inp.parentNode.replaceChild(span, inp);
+          });
+          return r;
+        }
+
+        // build a full table (thead + tbody rows)
+        function buildTableFromRows(rows) {
+          const t = document.createElement('table');
+          // keep basic table styling for clarity inside PDF
+          t.style.width = '100%';
+          t.style.borderCollapse = 'collapse';
+          t.style.fontSize = '12px';
+          // create header
+          t.innerHTML = `<thead>
+            <tr>
+              <th style="border:1px solid #ccc;padding:6px;text-align:center">Item</th>
+              <th style="border:1px solid #ccc;padding:6px;text-align:center">Opening</th>
+              <th style="border:1px solid #ccc;padding:6px;text-align:center">Closing</th>
+              <th style="border:1px solid #ccc;padding:6px;text-align:center">Status</th>
+            </tr>
+          </thead>`;
+          const tb = document.createElement('tbody');
+          rows.forEach(r => tb.appendChild(cloneRowToPrintable(r)));
+          t.appendChild(tb);
+          return t;
+        }
+
+        // Build wrapper (off-screen)
         const header = document.querySelector('h1')?.cloneNode(true);
         const dateLabel = document.querySelector('label')?.cloneNode(true);
-        const table = document.querySelector('#stockTable')?.cloneNode(true);
-        const bottom = document.querySelector('.bottom-section')?.cloneNode(true);
 
         const wrapper = document.createElement('div');
         wrapper.style.position = 'fixed';
         wrapper.style.left = '-9999px';
         wrapper.style.top = '0';
         wrapper.style.background = '#ffffff';
-        wrapper.style.padding = '12px';
+        wrapper.style.padding = '8px';
         wrapper.style.width = wrapperCssWidthPx + 'px';
         wrapper.style.boxSizing = 'border-box';
         wrapper.style.color = '#000';
+        wrapper.style.fontFamily = 'Arial, sans-serif';
 
-        [header, dateLabel, table, bottom].forEach(n => { if (n) wrapper.appendChild(n); });
+        // larger header in printable wrapper
+        if (header) {
+          header.style.textAlign = 'center';
+          header.style.fontSize = '18px';
+          wrapper.appendChild(header);
+        }
+        if (dateLabel) {
+          wrapper.appendChild(dateLabel);
+        }
 
-        // Copy current input values & checked state into the clone
-        document.querySelectorAll('input[id]').forEach(orig => {
-          try {
-            const id = orig.id;
-            const clone = wrapper.querySelector('#' + (window.CSS && CSS.escape ? CSS.escape(id) : id));
-            if (!clone) return;
-            if (orig.type === 'checkbox' || orig.type === 'radio') clone.checked = orig.checked;
-            else {
-              clone.value = orig.value;
-              clone.defaultValue = orig.value;
-            }
-            // make clone non-interactive
-            clone.readOnly = true;
-            clone.style.pointerEvents = 'none';
-          } catch (e) {
-            console.warn('copy input failed for', orig.id, e);
-          }
-        });
+        // two columns container
+        const cols = document.createElement('div');
+        cols.style.display = 'flex';
+        cols.style.gap = '12px';
+        cols.style.marginTop = '6px';
+
+        // left column
+        const leftCol = document.createElement('div');
+        leftCol.style.flex = '1';
+        leftCol.style.minWidth = '48%';
+        leftCol.appendChild(buildTableFromRows(leftRows));
+
+        // right column
+        const rightCol = document.createElement('div');
+        rightCol.style.flex = '1';
+        rightCol.style.minWidth = '48%';
+        rightCol.appendChild(buildTableFromRows(rightRows));
+
+        cols.appendChild(leftCol);
+        cols.appendChild(rightCol);
+        wrapper.appendChild(cols);
+
+        // append bottom-section (notes, sales, staff) if exists — clone and convert inputs
+        const bottom = document.querySelector('.bottom-section')?.cloneNode(true);
+        if (bottom) {
+          // replace its inputs with their current values
+          bottom.querySelectorAll('input').forEach(inp => {
+            const span = document.createElement('span');
+            if (inp.type === 'checkbox' || inp.type === 'radio') span.textContent = inp.checked ? '✔' : '';
+            else span.textContent = inp.value || '';
+            span.style.display = 'inline-block';
+            span.style.minWidth = '40px';
+            inp.parentNode.replaceChild(span, inp);
+          });
+          bottom.style.marginTop = '10px';
+          wrapper.appendChild(bottom);
+        }
 
         document.body.appendChild(wrapper);
 
-        // Render wrapper to canvas
-        const canvas = await html2canvas(wrapper, { scale: targetRenderScale, backgroundColor: '#ffffff' });
+        // Render the wrapper to canvas
+        const canvas = await html2canvas(wrapper, { scale, backgroundColor: '#ffffff' });
 
-        // cleanup
+        // remove wrapper
         document.body.removeChild(wrapper);
 
-        // Convert canvas px to mm
+        // Convert canvas px -> mm then scale to page inner width (fit width)
         const canvasWidthMm = canvas.width * pxToMm;
         const canvasHeightMm = canvas.height * pxToMm;
 
-        // Compute scale to fit inside page inner area while preserving aspect ratio
         const fitScale = Math.min(pageInnerWidthMm / canvasWidthMm, pageInnerHeightMm / canvasHeightMm, 1);
-
         const imgWidthMm = canvasWidthMm * fitScale;
         const imgHeightMm = canvasHeightMm * fitScale;
 
-        // Center the image with margins
-        const x = (pdf.internal.pageSize.getWidth() - imgWidthMm) / 2;
-        const y = (pdf.internal.pageSize.getHeight() - imgHeightMm) / 2;
-
+        // add image & paginate if needed
         const imgData = canvas.toDataURL('image/png');
+        let x = (pdf.internal.pageSize.getWidth() - imgWidthMm) / 2;
+        let y = margin + (pdf.internal.pageSize.getHeight() - (imgHeightMm + margin * 2)) / 2;
+        // ensure top margin
+        y = Math.max(margin, y);
+
         pdf.addImage(imgData, 'PNG', x, y, imgWidthMm, imgHeightMm);
+
+        // if the image is taller than a page, paginate by repeating the same image with vertical offsets
+        let remaining = imgHeightMm - (pdf.internal.pageSize.getHeight() - margin * 2);
+        let offset = imgHeightMm - remaining;
+        while (remaining > 0) {
+          pdf.addPage();
+          const yOffset = margin - offset;
+          pdf.addImage(imgData, 'PNG', x, yOffset, imgWidthMm, imgHeightMm);
+          remaining -= (pdf.internal.pageSize.getHeight() - margin * 2);
+          offset += (pdf.internal.pageSize.getHeight() - margin * 2);
+        }
 
         const date = document.getElementById('date')?.value || '(No Date)';
         pdf.save('daily_stock_' + date + '.pdf');

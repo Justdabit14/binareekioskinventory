@@ -134,181 +134,122 @@ td:first-child { text-align: left; padding-left: 8px; }
 
   <script>
     async function downloadPDF() {
-      try {
-        const { jsPDF } = window.jspdf;
-        if (!window.html2canvas) throw new Error("html2canvas not loaded");
+  try {
+    const { jsPDF } = window.jspdf;
+    if (!window.html2canvas) throw new Error("html2canvas not loaded");
 
-        // page and conversion setup (A4 portrait)
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const margin = 8; // mm margins
-        const pageW = pdf.internal.pageSize.getWidth();
-        const pageH = pdf.internal.pageSize.getHeight();
-        const pageInnerW = pageW - margin * 2;
-        const pageInnerH = pageH - margin * 2;
+    // Setup A4 PDF
+    const pdf = new jsPDF("p", "mm", "a4");
+    const margin = 10;
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const usableW = pageW - margin * 2;
+    const usableH = pageH - margin * 2;
 
-        // px->mm helper and canvas scale for sharp output
-        const pxToMm = 25.4 / 96;
-        const renderScale = Math.max(2, Math.round((window.devicePixelRatio || 1) * 2));
-        const wrapperCssWidthPx = Math.round(pageInnerW / (pxToMm * renderScale));
+    // px → mm conversion
+    const pxToMm = 25.4 / 96;
 
-        // helpers
-        const val = id => {
-          const el = document.getElementById(id);
-          if (!el) return '';
-          if (el.type === 'checkbox' || el.type === 'radio') return el.checked;
-          return el.value || '';
-        };
-        const safe = s => String(s).replace(/[^a-z0-9\-_]/gi, '_');
+    // Wrapper width must always match A4 width (scaled)
+    const renderScale = 2.2; 
+    const wrapperWidthPx = Math.floor((usableW / pxToMm) * (1 / renderScale));
 
-        // Build one single full-width printable table (category headers + rows)
-        function buildSingleTable() {
-          const table = document.createElement('table');
-          table.style.width = '100%';
-          table.style.borderCollapse = 'collapse';
-          table.style.fontSize = '11px';
-          table.style.border = '1px solid #bbb';
-          table.innerHTML = `<thead>
-            <tr>
-              <th style="border:1px solid #ccc;padding:6px;text-align:left;width:40%">Item</th>
-              <th style="border:1px solid #ccc;padding:6px;text-align:center;width:20%">Opening</th>
-              <th style="border:1px solid #ccc;padding:6px;text-align:center;width:20%">Closing</th>
-              <th style="border:1px solid #ccc;padding:6px;text-align:center;width:20%">Status</th>
-            </tr>
-          </thead>`;
-          const tb = document.createElement('tbody');
+    // Build temporary wrapper
+    const wrapper = document.createElement("div");
+    wrapper.style.position = "fixed";
+    wrapper.style.left = "-9999px";
+    wrapper.style.top = "0";
+    wrapper.style.width = wrapperWidthPx + "px";
+    wrapper.style.background = "#fff";
+    wrapper.style.padding = "0";
+    wrapper.style.fontFamily = "Arial, sans-serif";
 
-          Object.keys(categories).forEach(cat => {
-            const hdr = document.createElement('tr');
-            hdr.innerHTML = `<td colspan="4" style="padding:6px;background:#f0f0f0;font-weight:700;text-align:left">${cat}</td>`;
-            tb.appendChild(hdr);
+    // Clone header
+    const head = document.querySelector("h1").cloneNode(true);
+    head.style.textAlign = "center";
+    head.style.fontSize = "18px";
+    head.style.marginBottom = "8px";
+    wrapper.appendChild(head);
 
-            categories[cat].forEach(item => {
-              const idBase = `${safe(cat)}-${safe(item)}`;
-              let rowInner = '';
-              if (item === 'Egg') {
-                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('openCtn-'+idBase) || ''}" readonly style="width:40px;text-align:center"> ctn <input value="${val('openPcs-'+idBase) || ''}" readonly style="width:40px;text-align:center"> pcs</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('closeCtn-'+idBase) || ''}" readonly style="width:40px;text-align:center"> ctn <input value="${val('closePcs-'+idBase) || ''}" readonly style="width:40px;text-align:center"> pcs</td>
-                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
-              } else if (item === 'Smash Burger') {
-                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('openPcs-'+idBase) || ''}" readonly style="width:60px;text-align:center"> pcs</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('closePcs-'+idBase) || ''}" readonly style="width:60px;text-align:center"> pcs</td>
-                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
-              } else if (item === 'Tomato Puree') {
-                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('openCans-'+idBase) || ''}" readonly style="width:60px;text-align:center"> cans</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('closeCans-'+idBase) || ''}" readonly style="width:60px;text-align:center"> cans</td>
-                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
-              } else if (['Sauces & Spices','Cheese','Sayur'].includes(cat) || item === 'Oil' || item === 'Margarine' || item === 'Sloppy Joe' || item === 'Black Pepper' || item === 'White Pepper') {
-                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('open-'+idBase) || ''}" readonly style="width:80px;text-align:center"></td>
-                  <td style="padding:6px;text-align:center"><input value="${val('close-'+idBase) || ''}" readonly style="width:80px;text-align:center"></td>
-                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
-              } else {
-                rowInner = `<td style="text-align:left;padding:6px">${item}</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('openPkt-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pkt <input value="${val('openPcs-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td style="padding:6px;text-align:center"><input value="${val('closePkt-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pkt <input value="${val('closePcs-'+idBase) || ''}" readonly style="width:50px;text-align:center"> pcs</td>
-                  <td style="padding:6px;text-align:center"><label><input type="checkbox" ${val('beli-'+idBase) ? 'checked' : ''} disabled> Beli</label> <label><input type="checkbox" ${val('bawak-'+idBase) ? 'checked' : ''} disabled> Bawak</label></td>`;
-              }
+    // Clone & freeze date
+    const dlabel = document.querySelector('label').cloneNode(true);
+    const dinput = dlabel.querySelector("input");
+    const realDate = document.getElementById("date");
+    if (realDate) dinput.value = realDate.value;
+    dinput.readOnly = true;
+    dinput.style.pointerEvents = "none";
+    dlabel.style.marginBottom = "10px";
+    wrapper.appendChild(dlabel);
 
-              const tr = document.createElement('tr');
-              tr.style.borderTop = '1px solid #e0e0e0';
-              tr.innerHTML = rowInner;
-              tb.appendChild(tr);
-            });
-          });
+    // Clone ENTIRE table output (exact as viewed)
+    const table = document.querySelector("#stockTable").cloneNode(true);
+    table.style.width = wrapperWidthPx + "px";
+    table.querySelectorAll("input").forEach(i => {
+      const live = document.getElementById(i.id);
+      if (live) i.value = live.value;
+      i.readOnly = true;
+      i.style.pointerEvents = "none";
+    });
+    wrapper.appendChild(table);
 
-          table.appendChild(tb);
-          return table;
-        }
+    // Clone bottom section (notes + sales + staffs)
+    const bottom = document.querySelector(".bottom-section").cloneNode(true);
+    bottom.querySelectorAll("input").forEach(i => {
+      const live = document.getElementById(i.id);
+      if (live) {
+        if (i.type === "checkbox") i.checked = live.checked;
+        else i.value = live.value;
+      }
+      i.readOnly = true;
+      i.style.pointerEvents = "none";
+    });
+    bottom.style.marginTop = "12px";
+    wrapper.appendChild(bottom);
 
-        // Build printable wrapper (full page width inside margins)
-        const wrap = document.createElement('div');
-        wrap.style.position = 'fixed';
-        wrap.style.left = '-9999px';
-        wrap.style.top = '0';
-        wrap.style.background = '#fff';
-        wrap.style.width = wrapperCssWidthPx + 'px';
-        wrap.style.boxSizing = 'border-box';
-        wrap.style.padding = '0';
-        wrap.style.fontFamily = 'Arial, sans-serif';
-        wrap.style.color = '#000';
-        // header + compact date
-        const header = document.querySelector('h1')?.cloneNode(true);
-        if (header) {
-          header.style.margin = '0 0 6px 0';
-          header.style.fontSize = '16px';
-          header.style.textAlign = 'center';
-          wrap.appendChild(header);
-        }
-        const dateLabel = document.querySelector('label')?.cloneNode(true);
-        if (dateLabel) {
-          const orig = document.getElementById('date');
-          const input = dateLabel.querySelector('input');
-          if (orig && input) { input.value = orig.value || ''; input.readOnly = true; input.style.pointerEvents = 'none'; }
-          dateLabel.style.display = 'block';
-          dateLabel.style.margin = '0 0 8px 0';
-          wrap.appendChild(dateLabel);
-        }
+    document.body.appendChild(wrapper);
 
-        // append simple single table
-        wrap.appendChild(buildSingleTable());
+    // Render canvas
+    const canvas = await html2canvas(wrapper, {
+      scale: renderScale,
+      backgroundColor: "#fff",
+      useCORS: true
+    });
 
-        // append bottom (notes/sales/staffs) — copy values
-        const bottom = document.querySelector('.bottom-section')?.cloneNode(true);
-        if (bottom) {
-          bottom.querySelectorAll('input').forEach(inp => {
-            const id = inp.id;
-            if (!id) return;
-            const live = document.getElementById(id);
-            if (!live) return;
-            if (live.type === 'checkbox') inp.checked = live.checked;
-            else inp.value = live.value || '';
-            inp.readOnly = true;
-            inp.style.pointerEvents = 'none';
-          });
-          bottom.style.marginTop = '10px';
-          wrap.appendChild(bottom);
-        }
+    document.body.removeChild(wrapper);
 
-        document.body.appendChild(wrap);
+    const canvasWmm = canvas.width * pxToMm;
+    const canvasHmm = canvas.height * pxToMm;
 
-        // render wrapper
-        const canvas = await html2canvas(wrap, { scale: renderScale, backgroundColor: '#fff', useCORS: true });
-        document.body.removeChild(wrap);
+    const scaleToFit = usableW / canvasWmm;
+    const finalW = usableW;
+    const finalH = canvasHmm * scaleToFit;
 
-        // convert and fit to full printable width — paginate vertically if needed
-        const canvasWidthMm = canvas.width * pxToMm;
-        const canvasHeightMm = canvas.height * pxToMm;
-        const widthScale = pageInnerW / canvasWidthMm;
-        const imgWmm = pageInnerW;
-        const imgHmm = canvasHeightMm * widthScale;
-        const imgData = canvas.toDataURL('image/png');
+    const img = canvas.toDataURL("image/png");
 
-        // add first page
-        pdf.addImage(imgData, 'PNG', margin, margin, imgWmm, imgHmm);
+    // Add first page
+    pdf.addImage(img, "PNG", margin, margin, finalW, finalH);
 
-        // paginate by shifting the large image up on new pages
-        if (imgHmm > pageInnerH) {
-          let remaining = imgHmm - pageInnerH;
-          let offset = pageInnerH;
-          while (remaining > 0) {
-            pdf.addPage();
-            // place the same image shifted up so next slice is visible
-            pdf.addImage(imgData, 'PNG', margin, margin - offset, imgWmm, imgHmm);
-            remaining -= pageInnerH;
-            offset += pageInnerH;
-          }
-        }
+    // Multi-page support
+    if (finalH > usableH) {
+      let yOffset = finalH - usableH;
+      let yShift = usableH;
 
-        const date = document.getElementById('date')?.value || '(No Date)';
-        pdf.save('daily_stock_' + date + '.pdf');
-      } catch (err) {
-        alert('PDF export failed: ' + (err && err.message ? err.message : err));
-        console.error(err);
+      while (yOffset > 0) {
+        pdf.addPage();
+        pdf.addImage(img, "PNG", margin, margin - yShift, finalW, finalH);
+        yOffset -= usableH;
+        yShift += usableH;
       }
     }
+
+    // Save file
+    const date = document.getElementById("date").value || "no_date";
+    pdf.save(`daily_stock_${date}.pdf`);
+
+  } catch (err) {
+    alert("PDF export failed: " + err.message);
+    console.error(err);
+  }
+}
   </script>
 
   <script>

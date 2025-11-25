@@ -134,102 +134,71 @@ td:first-child { text-align: left; padding-left: 8px; }
 
   <script>
   async function downloadPDF() {
-  try {
-    const { jsPDF } = window.jspdf;
-    if (!window.html2canvas) throw new Error("html2canvas not loaded");
+  const { jsPDF } = window.jspdf;
+  const mainContent = document.getElementById("mainContent");
 
-    const pdf = new jsPDF("p", "mm", "a4");
-    const margin = 10;
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const usableW = pageW - margin * 2;
-    const usableH = pageH - margin * 2;
+  // Get the date input
+  let selectedDate = document.getElementById("date")?.value;
+  if (!selectedDate) selectedDate = new Date().toISOString().split("T")[0];
+  const filename = `Stock-${selectedDate}.pdf`;
 
-    const pxToMm = 25.4 / 96;
+  // --- Replace checkboxes with symbols so html2canvas captures them ---
+  const swaps = [];
+  mainContent.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    swaps.push({ element: cb });
 
-    // Render scale + forced wrapper width
-    const renderScale = 2.2;
-    const wrapperWidthPx = Math.floor((usableW / pxToMm) * (1 / renderScale));
+    const span = document.createElement("span");
+    span.textContent = cb.checked ? "☑" : "☐";
+    span.style.marginLeft = "4px";
+    cb.style.display = "none";
+    cb.parentNode.insertBefore(span, cb.nextSibling);
+  });
 
-    // Build wrapper
-    const wrapper = document.createElement("div");
-    wrapper.style.position = "fixed";
-    wrapper.style.left = "-9999px";
-    wrapper.style.top = "0";
-    wrapper.style.width = wrapperWidthPx + "px";
-    wrapper.style.background = "#fff";
-    wrapper.style.fontFamily = "Arial, sans-serif";
+  // --- Render page ---
+  const canvas = await html2canvas(mainContent, {
+    scale: 2,
+    useCORS: true,
+    windowWidth: mainContent.scrollWidth
+  });
 
-    // Clone header
-    const head = document.querySelector("h1").cloneNode(true);
-    head.style.textAlign = "center";
-    head.style.fontSize = "18px";
-    wrapper.appendChild(head);
+  // Restore checkboxes after render
+  swaps.forEach(s => {
+    s.element.style.display = "";
+    const next = s.element.nextSibling;
+    if (next && next.textContent?.match(/[☑☐]/)) next.remove();
+  });
 
-    // Clone date
-    const dlabel = document.querySelector("label").cloneNode(true);
-    const dinput = dlabel.querySelector("input");
-    const realDate = document.getElementById("date");
-    dinput.value = realDate.value;
-    dinput.readOnly = true;
-    wrapper.appendChild(dlabel);
+  // Convert canvas to image
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF("p", "mm", "a4");
 
-    // Clone table
-    const table = document.querySelector("#stockTable").cloneNode(true);
-    table.style.width = wrapperWidthPx + "px";
-    table.querySelectorAll("input").forEach(i => {
-      const live = document.getElementById(i.id);
-      if (live) i.value = live.value;
-      i.readOnly = true;
-    });
-    wrapper.appendChild(table);
+  // A4 dimensions
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-    // Clone bottom
-    const bottom = document.querySelector(".bottom-section").cloneNode(true);
-    bottom.querySelectorAll("input").forEach(i => {
-      const live = document.getElementById(i.id);
-      if (live) {
-        if (i.type === "checkbox") i.checked = live.checked;
-        else i.value = live.value;
-      }
-      i.readOnly = true;
-    });
-    wrapper.appendChild(bottom);
+  // SPACE RESERVED (top+bottom)
+  const topMargin = 10;
+  const bottomMargin = 10;
 
-    document.body.appendChild(wrapper);
+  const usableHeight = pageHeight - topMargin - bottomMargin;
 
-    // Render
-    const canvas = await html2canvas(wrapper, {
-      scale: renderScale,
-      backgroundColor: "#fff",
-      useCORS: true
-    });
+  // Fit image inside page while keeping ratio
+  const ratio = Math.min(pageWidth / canvas.width, usableHeight / canvas.height);
 
-    document.body.removeChild(wrapper);
+  const imgWidth = canvas.width * ratio;
+  const imgHeight = canvas.height * ratio;
 
-    // Convert to mm
-    const canvasWmm = canvas.width * pxToMm;
-    const canvasHmm = canvas.height * pxToMm;
+  // --- Print date at top ---
+  pdf.setFontSize(12);
+  pdf.text(`Date: ${selectedDate}`, 10, 8);
 
-    // SCALE TO FIT ONE PAGE ONLY
-    const scaleW = usableW / canvasWmm;
-    const scaleH = usableH / canvasHmm;
-    const finalScale = Math.min(scaleW, scaleH); // pick smaller to fit into one page
+  // --- Insert table image ---
+  pdf.addImage(imgData, "PNG", 0, topMargin, imgWidth, imgHeight);
 
-    const finalW = canvasWmm * finalScale;
-    const finalH = canvasHmm * finalScale;
-
-    const img = canvas.toDataURL("image/png");
-
-    pdf.addImage(img, "PNG", margin, margin, finalW, finalH);
-
-    const date = document.getElementById("date").value || "no_date";
-    pdf.save(`daily_stock_${date}.pdf`);
-
-  } catch (err) {
-    alert("PDF export failed: " + err.message);
-  }
+  // --- Save file ---
+  pdf.save(filename);
 }
+
 
   </script>
 
